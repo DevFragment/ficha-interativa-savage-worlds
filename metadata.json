@@ -1,0 +1,6 @@
+{
+  "name": "Ficha Interativa Savage Worlds",
+  "description": "Ficha de personagem interativa e responsiva para Savage Worlds, que altera atributos, pericias, vantagens e poderes dinamicamente conforme a arma/forma ativa, com compartilhamento de leitura em tempo real via link.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

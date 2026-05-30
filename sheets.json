@@ -1,0 +1,414 @@
+{
+  "sheet_3t2z9pp2f": {
+    "id": "sheet_3t2z9pp2f",
+    "nomePersonagem": "Gu Channge",
+    "jogador": "Jogador",
+    "campanha": "Minha Campanha",
+    "raca": "Humano",
+    "conceito": "Cultivador",
+    "aparencia": "",
+    "historia": "",
+    "equipamentoGeral": "",
+    "pesoCarregado": "0 kg",
+    "pesoLimite": "20 kg",
+    "formas": [
+      {
+        "formId": "base",
+        "nomeForma": "Ficha Base",
+        "imageUrl": "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=350&h=350&fit=crop&q=80",
+        "atributos": {
+          "Agilidade": {
+            "dado": "d6",
+            "mod": 0
+          },
+          "Astúcia": {
+            "dado": "d6",
+            "mod": 0
+          },
+          "Espírito": {
+            "dado": "d6",
+            "mod": 0
+          },
+          "Força": {
+            "dado": "d6",
+            "mod": 0
+          },
+          "Vigor": {
+            "dado": "d6",
+            "mod": 0
+          }
+        },
+        "pericias": [
+          {
+            "nome": "Atletismo",
+            "atributoAssociado": "Agilidade",
+            "possui": true,
+            "dado": "d6",
+            "mod": 0
+          },
+          {
+            "nome": "Furtividade",
+            "atributoAssociado": "Agilidade",
+            "possui": false,
+            "dado": "d4",
+            "mod": 0
+          },
+          {
+            "nome": "Lutar",
+            "atributoAssociado": "Agilidade",
+            "possui": false,
+            "dado": "d4",
+            "mod": 0
+          },
+          {
+            "nome": "Atirar",
+            "atributoAssociado": "Agilidade",
+            "possui": false,
+            "dado": "d4",
+            "mod": 0
+          },
+          {
+            "nome": "Dirigir",
+            "atributoAssociado": "Agilidade",
+            "possui": false,
+            "dado": "d4",
+            "mod": 0
+          },
+          {
+            "nome": "Ladinagem",
+            "atributoAssociado": "Agilidade",
+            "possui": false,
+            "dado": "d4",
+            "mod": 0
+          },
+          {
+            "nome": "Navegar",
+            "atributoAssociado": "Agilidade",
+            "possui": false,
+            "dado": "d4",
+            "mod": 0
+          },
+          {
+            "nome": "Cavalgar",
+            "atributoAssociado": "Agilidade",
+            "possui": false,
+            "dado": "d4",
+            "mod": 0
+          },
+          {
+            "nome": "Perceber",
+            "atributoAssociado": "Astúcia",
+            "possui": true,
+            "dado": "d6",
+            "mod": 0
+          },
+          {
+            "nome": "Con. Geral",
+            "atributoAssociado": "Astúcia",
+            "possui": true,
+            "dado": "d4",
+            "mod": 0
+          },
+          {
+            "nome": "Científico",
+            "atributoAssociado": "Astúcia",
+            "possui": false,
+            "dado": "d4",
+            "mod": 0
+          },
+          {
+            "nome": "Histórico",
+            "atributoAssociado": "Astúcia",
+            "possui": false,
+            "dado": "d4",
+            "mod": 0
+          },
+          {
+            "nome": "Hackear",
+            "atributoAssociado": "Astúcia",
+            "possui": false,
+            "dado": "d4",
+            "mod": 0
+          },
+          {
+            "nome": "Sobrevivência",
+            "atributoAssociado": "Astúcia",
+            "possui": false,
+            "dado": "d4",
+            "mod": 0
+          },
+          {
+            "nome": "Medicina",
+            "atributoAssociado": "Astúcia",
+            "possui": false,
+            "dado": "d4",
+            "mod": 0
+          },
+          {
+            "nome": "Concertar",
+            "atributoAssociado": "Astúcia",
+            "possui": false,
+            "dado": "d4",
+            "mod": 0
+          },
+          {
+            "nome": "Provocar",
+            "atributoAssociado": "Astúcia",
+            "possui": false,
+            "dado": "d4",
+            "mod": 0
+          },
+          {
+            "nome": "Pesquisar",
+            "atributoAssociado": "Astúcia",
+            "possui": false,
+            "dado": "d4",
+            "mod": 0
+          },
+          {
+            "nome": "Eletrônica",
+            "atributoAssociado": "Astúcia",
+            "possui": false,
+            "dado": "d4",
+            "mod": 0
+          },
+          {
+            "nome": "Persuadir",
+            "atributoAssociado": "Espírito",
+            "possui": true,
+            "dado": "d4",
+            "mod": 0
+          },
+          {
+            "nome": "Intimidação",
+            "atributoAssociado": "Espírito",
+            "possui": false,
+            "dado": "d4",
+            "mod": 0
+          },
+          {
+            "nome": "Performance",
+            "atributoAssociado": "Espírito",
+            "possui": false,
+            "dado": "d4",
+            "mod": 0
+          }
+        ],
+        "vantagens": "",
+        "complicacoes": "",
+        "poderes": [],
+        "armas": [
+          {
+            "id": "w1",
+            "nome": "Ataque Desarmado",
+            "dano": "Força",
+            "alcance": "Melee",
+            "cdt": "1",
+            "pa": "0",
+            "peso": "0",
+            "observacoes": "Ataque padrão desarmado."
+          }
+        ],
+        "apararMod": 0,
+        "resistenciaMod": 0
+      },
+      {
+        "formId": "secundary",
+        "nomeForma": "Ficha Alternativa",
+        "imageUrl": "",
+        "atributos": {
+          "Agilidade": {
+            "dado": "d6",
+            "mod": 0
+          },
+          "Astúcia": {
+            "dado": "d6",
+            "mod": 0
+          },
+          "Espírito": {
+            "dado": "d6",
+            "mod": 0
+          },
+          "Força": {
+            "dado": "d6",
+            "mod": 0
+          },
+          "Vigor": {
+            "dado": "d6",
+            "mod": 0
+          }
+        },
+        "pericias": [
+          {
+            "nome": "Atletismo",
+            "atributoAssociado": "Agilidade",
+            "possui": true,
+            "dado": "d6",
+            "mod": 0
+          },
+          {
+            "nome": "Furtividade",
+            "atributoAssociado": "Agilidade",
+            "possui": false,
+            "dado": "d4",
+            "mod": 0
+          },
+          {
+            "nome": "Lutar",
+            "atributoAssociado": "Agilidade",
+            "possui": false,
+            "dado": "d4",
+            "mod": 0
+          },
+          {
+            "nome": "Atirar",
+            "atributoAssociado": "Agilidade",
+            "possui": false,
+            "dado": "d4",
+            "mod": 0
+          },
+          {
+            "nome": "Dirigir",
+            "atributoAssociado": "Agilidade",
+            "possui": false,
+            "dado": "d4",
+            "mod": 0
+          },
+          {
+            "nome": "Ladinagem",
+            "atributoAssociado": "Agilidade",
+            "possui": false,
+            "dado": "d4",
+            "mod": 0
+          },
+          {
+            "nome": "Navegar",
+            "atributoAssociado": "Agilidade",
+            "possui": false,
+            "dado": "d4",
+            "mod": 0
+          },
+          {
+            "nome": "Cavalgar",
+            "atributoAssociado": "Agilidade",
+            "possui": false,
+            "dado": "d4",
+            "mod": 0
+          },
+          {
+            "nome": "Perceber",
+            "atributoAssociado": "Astúcia",
+            "possui": true,
+            "dado": "d6",
+            "mod": 0
+          },
+          {
+            "nome": "Con. Geral",
+            "atributoAssociado": "Astúcia",
+            "possui": false,
+            "dado": "d4",
+            "mod": 0
+          },
+          {
+            "nome": "Científico",
+            "atributoAssociado": "Astúcia",
+            "possui": false,
+            "dado": "d4",
+            "mod": 0
+          },
+          {
+            "nome": "Histórico",
+            "atributoAssociado": "Astúcia",
+            "possui": false,
+            "dado": "d4",
+            "mod": 0
+          },
+          {
+            "nome": "Hackear",
+            "atributoAssociado": "Astúcia",
+            "possui": false,
+            "dado": "d4",
+            "mod": 0
+          },
+          {
+            "nome": "Sobrevivência",
+            "atributoAssociado": "Astúcia",
+            "possui": false,
+            "dado": "d4",
+            "mod": 0
+          },
+          {
+            "nome": "Medicina",
+            "atributoAssociado": "Astúcia",
+            "possui": false,
+            "dado": "d4",
+            "mod": 0
+          },
+          {
+            "nome": "Concertar",
+            "atributoAssociado": "Astúcia",
+            "possui": false,
+            "dado": "d4",
+            "mod": 0
+          },
+          {
+            "nome": "Provocar",
+            "atributoAssociado": "Astúcia",
+            "possui": false,
+            "dado": "d4",
+            "mod": 0
+          },
+          {
+            "nome": "Pesquisar",
+            "atributoAssociado": "Astúcia",
+            "possui": false,
+            "dado": "d4",
+            "mod": 0
+          },
+          {
+            "nome": "Eletrônica",
+            "atributoAssociado": "Astúcia",
+            "possui": false,
+            "dado": "d4",
+            "mod": 0
+          },
+          {
+            "nome": "Persuadir",
+            "atributoAssociado": "Espírito",
+            "possui": false,
+            "dado": "d4",
+            "mod": 0
+          },
+          {
+            "nome": "Intimidação",
+            "atributoAssociado": "Espírito",
+            "possui": false,
+            "dado": "d4",
+            "mod": 0
+          },
+          {
+            "nome": "Performance",
+            "atributoAssociado": "Espírito",
+            "possui": false,
+            "dado": "d4",
+            "mod": 0
+          }
+        ],
+        "vantagens": "",
+        "complicacoes": "",
+        "poderes": [],
+        "armas": [],
+        "apararMod": 0,
+        "resistenciaMod": 0
+      }
+    ],
+    "formaAtivaId": "base",
+    "benes": 3,
+    "ferimentos": 0,
+    "fadiga": 0,
+    "xp": 0,
+    "xpTrack": "Novato",
+    "lastUpdated": 1780099445633,
+    "editToken": "edit_jy9o6q7p3th"
+  }
+}
