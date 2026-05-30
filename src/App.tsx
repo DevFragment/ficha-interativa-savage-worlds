@@ -281,14 +281,14 @@ const parseSavageWorldsPDFFields = (fieldData: Record<string, string>): Characte
   if (writtenParry > 0) {
     const lutar = periciasList.find(p => p.nome.toLowerCase() === 'lutar');
     const lutarDieVal = lutar && lutar.possui ? (parseInt(lutar.dado.replace('d', '')) || 4) : 0;
-    const baseParry = lutarDieVal > 0 ? (2 + Math.floor(lutarDieVal / 2) + (lutar?.mod || 0)) : 2;
+    const baseParry = lutarDieVal > 0 ? (2 + Math.floor((lutarDieVal + (lutar?.mod || 0)) / 2)) : 2;
     apararMod = writtenParry - baseParry;
   }
 
   const writtenToughness = parseInt(getValue('ResistênciaTotal')) || parseInt(getValue('ResistênciaNatural')) || 0;
   if (writtenToughness > 0) {
     const vigorDieVal = parseInt(atributos.Vigor.dado.replace('d', '')) || 6;
-    const baseToughness = 2 + Math.floor(vigorDieVal / 2) + atributos.Vigor.mod;
+    const baseToughness = 2 + Math.floor((vigorDieVal + (atributos.Vigor.mod || 0)) / 2);
     resistenciaMod = writtenToughness - baseToughness;
   }
 
@@ -851,13 +851,13 @@ export default function App() {
     const lutar = form.pericias.find(p => p.nome.toLowerCase() === 'lutar');
     if (!lutar || !lutar.possui) return 2 + form.apararMod;
     const dieValue = parseInt(lutar.dado.replace('d', '')) || 4;
-    return 2 + Math.floor(dieValue / 2) + lutar.mod + form.apararMod;
+    return 2 + Math.floor((dieValue + (lutar.mod || 0)) / 2) + form.apararMod;
   };
 
   const getToughness = (form: CharacterFormState): number => {
     const vigor = form.atributos.Vigor;
     const dieValue = parseInt(vigor.dado.replace('d', '')) || 6;
-    return 2 + Math.floor(dieValue / 2) + vigor.mod + form.resistenciaMod;
+    return 2 + Math.floor((dieValue + (vigor.mod || 0)) / 2) + form.resistenciaMod;
   };
 
   const getPenalties = (): number => {
@@ -1844,9 +1844,9 @@ export default function App() {
               
               {/* PENALTIES & TRACKS */}
               <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 md:p-5 shadow-sm space-y-4">
-                <h3 className="text-xs font-serif font-bold text-amber-200 border-b border-slate-800 pb-2 flex items-center justify-between">
+                <h3 className="text-xs font-serif font-bold text-amber-250 border-b border-slate-850 pb-2.5 flex items-center justify-between pl-2.5 border-l-2 border-amber-500">
                   <span>Modificadores e Ferimentos</span>
-                  <span className="text-[10px] bg-red-950 text-red-400 border border-red-500/20 px-2 py-0.5 rounded font-mono font-bold uppercase">
+                  <span className="text-[10px] bg-red-950/60 text-red-400 border border-red-500/20 px-2 py-0.5 rounded font-mono font-bold uppercase">
                     Mod Penal: {getPenalties()}
                   </span>
                 </h3>
@@ -1854,10 +1854,10 @@ export default function App() {
                 {/* Ferimentos */}
                 <div className="space-y-2">
                   <div className="flex justify-between items-center text-xs">
-                    <span className="font-semibold text-slate-300 flex items-center gap-1">
+                    <span className="font-semibold text-slate-300 flex items-center gap-1.5">
                       <Skull className="w-3.5 h-3.5 text-red-500" /> Ferimentos (Max 3)
                     </span>
-                    <span className="font-mono text-amber-200">-{Math.min(sheet.ferimentos, 3)} nas jogadas</span>
+                    <span className="font-mono text-amber-300">-{Math.min(sheet.ferimentos, 3)} nas jogadas</span>
                   </div>
                   <div className="flex gap-1.5">
                     {[0, 1, 2, 3].map((val) => {
@@ -1867,12 +1867,12 @@ export default function App() {
                           key={val}
                           disabled={!isEditable}
                           onClick={() => updateSheet(prev => ({ ...prev, ferimentos: val }))}
-                          className={`flex-1 py-1.5 rounded-lg font-bold text-xs border transition-all cursor-pointer ${
+                          className={`flex-1 py-2 rounded-lg font-bold text-xs border transition-all cursor-pointer ${
                             isActive 
                               ? val === 0 
-                                ? 'bg-green-500/10 border-green-500 text-green-400' 
-                                : 'bg-red-500/15 border-red-500 text-red-400 font-extrabold'
-                              : 'bg-slate-950 border-slate-850 text-slate-600 hover:border-slate-800'
+                                ? 'bg-gradient-to-r from-emerald-600/20 to-emerald-500/25 border-emerald-500/60 text-emerald-300 font-extrabold shadow-md shadow-emerald-500/5' 
+                                : 'bg-gradient-to-r from-red-650 to-red-550 border-red-450 text-white font-extrabold shadow-lg shadow-red-500/30 scale-102'
+                              : 'bg-slate-950/60 border-slate-850 text-slate-500 hover:border-slate-800 hover:text-slate-350'
                           }`}
                         >
                           {val === 0 ? 'ILeso' : `${val}`}
@@ -1885,10 +1885,10 @@ export default function App() {
                 {/* Fadiga */}
                 <div className="space-y-2">
                   <div className="flex justify-between items-center text-xs">
-                    <span className="font-semibold text-slate-300 flex items-center gap-1">
+                    <span className="font-semibold text-slate-300 flex items-center gap-1.5">
                       <Feather className="w-3.5 h-3.5 text-amber-500" /> Fadiga (Max 2)
                     </span>
-                    <span className="font-mono text-amber-200">-{Math.min(sheet.fadiga, 2)} nas jogadas</span>
+                    <span className="font-mono text-amber-300">-{Math.min(sheet.fadiga, 2)} nas jogadas</span>
                   </div>
                   <div className="flex gap-1.5">
                     {[0, 1, 2].map((val) => {
@@ -1898,12 +1898,12 @@ export default function App() {
                           key={val}
                           disabled={!isEditable}
                           onClick={() => updateSheet(prev => ({ ...prev, fadiga: val }))}
-                          className={`flex-1 py-1.5 rounded-lg font-bold text-xs border transition-all cursor-pointer ${
+                          className={`flex-1 py-2 rounded-lg font-bold text-xs border transition-all cursor-pointer ${
                             isActive 
                               ? val === 0 
-                                ? 'bg-green-500/10 border-green-500 text-green-400' 
-                                : 'bg-amber-500/15 border-amber-500 text-amber-400'
-                              : 'bg-slate-950 border-slate-850 text-slate-600 hover:border-slate-850'
+                                ? 'bg-gradient-to-r from-emerald-600/20 to-emerald-500/25 border-emerald-500/60 text-emerald-300 font-extrabold shadow-md shadow-emerald-500/5' 
+                                : 'bg-gradient-to-r from-amber-500 to-amber-600 border-amber-450 text-slate-950 font-extrabold shadow-lg shadow-amber-500/20 scale-102'
+                              : 'bg-slate-950/60 border-slate-850 text-slate-500 hover:border-slate-850 hover:text-slate-350'
                           }`}
                         >
                           {val === 0 ? 'Firme' : `${val}`}
@@ -1916,7 +1916,7 @@ export default function App() {
 
               {/* SAVAGE ATTRIBUTES */}
               <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 md:p-5 shadow-sm space-y-3">
-                <h3 className="text-xs font-serif font-bold text-amber-200 border-b border-slate-800 pb-2">
+                <h3 className="text-xs font-serif font-bold text-amber-200 border-b border-slate-850 pb-2">
                   Atributos da Forma ({activeForm.nomeForma})
                 </h3>
 
@@ -1925,15 +1925,35 @@ export default function App() {
                     const attrData = activeForm.atributos[attr] || { dado: 'd6', mod: 0 };
                     
                     return (
-                      <div key={attr} className="space-y-1 pb-3 border-b border-slate-850/30 last:border-0 last:pb-0">
+                      <div key={attr} className="space-y-1.5 pb-3 border-b border-slate-850/30 last:border-0 last:pb-0">
                         <div className="flex justify-between items-center">
-                          <span className="text-xs font-bold text-slate-300">{attr}</span>
+                          <div className="flex flex-col">
+                            <span className="text-xs font-bold text-slate-200">{attr}</span>
+                            {/* Visual die pips for Attributes */}
+                            <div className="flex gap-0.5 mt-1">
+                              {[1, 2, 3, 4, 5].map((level) => {
+                                const dieLevels = ['d4', 'd6', 'd8', 'd10', 'd12'];
+                                const currentLevelIndex = dieLevels.indexOf(attrData.dado) + 1;
+                                const active = level <= currentLevelIndex;
+                                return (
+                                  <div 
+                                    key={level} 
+                                    className={`h-0.5 rounded-sm w-3.5 transition-colors duration-300 ${
+                                      active 
+                                        ? 'bg-amber-500 shadow-sm shadow-amber-500/50' 
+                                        : 'bg-slate-850'
+                                    }`} 
+                                  />
+                                );
+                              })}
+                            </div>
+                          </div>
                           
                           {/* Mod value */}
                           <div className="flex items-center gap-1.5">
                             {isEditable ? (
-                              <div className="flex items-center bg-slate-950 rounded px-1.5 py-0.5 text-[11px] border border-slate-850">
-                                <span className="text-[10px] text-slate-500 mr-1">Mod:</span>
+                              <div className="flex items-center bg-slate-950 rounded px-1.5 py-0.5 text-[10px] border border-slate-850 focus-within:border-amber-500/50 transition-colors">
+                                <span className="text-[9px] text-slate-500 mr-1 uppercase font-bold">Mod:</span>
                                 <input 
                                   type="number"
                                   value={attrData.mod}
@@ -1945,7 +1965,7 @@ export default function App() {
                                       return { ...form, atributos: nextAttrs };
                                     });
                                   }}
-                                  className="w-7 bg-transparent text-center font-bold text-amber-400 focus:outline-none"
+                                  className="w-7 bg-transparent text-center font-bold text-amber-400 focus:outline-none text-xs"
                                 />
                               </div>
                             ) : (
@@ -1959,7 +1979,7 @@ export default function App() {
                         </div>
 
                         {/* Attribute Dice levels */}
-                        <div className="grid grid-cols-5 gap-1.5 mt-1">
+                        <div className="grid grid-cols-5 gap-1 mt-1.5">
                           {(['d4', 'd6', 'd8', 'd10', 'd12'] as const).map((die) => {
                             const isSelected = attrData.dado === die;
                             return (
@@ -1973,10 +1993,10 @@ export default function App() {
                                     return { ...form, atributos: nextAttrs };
                                   });
                                 }}
-                                className={`py-1 text-center font-mono font-bold text-[11px] rounded border transition-all cursor-pointer ${
+                                className={`py-1 text-center font-mono font-bold text-[10px] rounded transition-all cursor-pointer ${
                                   isSelected 
-                                    ? 'bg-amber-500 border-amber-400 text-slate-950' 
-                                    : 'bg-slate-950 border-slate-850 text-slate-500 hover:border-slate-800'
+                                    ? 'bg-gradient-to-r from-amber-500 to-amber-600 border border-amber-400 text-slate-950 font-extrabold shadow-md shadow-amber-500/10 scale-105' 
+                                    : 'bg-slate-950 border border-slate-850 hover:border-slate-800 text-slate-500 hover:text-slate-350'
                                 }`}
                               >
                                 {die}
@@ -1992,19 +2012,19 @@ export default function App() {
 
               {/* PARRIES & TOUGHNESS BOX */}
               <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-sm space-y-3">
-                <h3 className="text-xs font-serif font-bold text-amber-200 border-b border-slate-800 pb-2">
+                <h3 className="text-xs font-serif font-bold text-amber-250 border-b border-slate-850 pb-2.5 pl-2.5 border-l-2 border-amber-500">
                   Estatísticas de Resiliência
                 </h3>
                 
                 <div className="grid grid-cols-2 gap-3.5">
-                  <div className="bg-slate-950 p-3 rounded-xl border border-slate-850 text-center space-y-1">
-                    <div className="flex justify-center text-amber-400"><Shield className="w-5 h-5" /></div>
+                  <div className="bg-slate-950 p-4 rounded-xl border border-amber-500/10 hover:border-amber-500/30 transition-all duration-300 text-center space-y-1.5 relative group shadow-inner">
+                    <div className="flex justify-center text-amber-400 drop-shadow-[0_0_4px_rgba(245,158,11,0.2)]"><Shield className="w-5 h-5 group-hover:scale-110 transition-transform duration-300" /></div>
                     <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Aparar</span>
-                    <span className="text-2xl font-serif font-bold text-amber-100 block">{getParry(activeForm)}</span>
-                    <span className="text-[9px] text-slate-500 block">½ dLutar + 2 {activeForm.apararMod !== 0 && `(${activeForm.apararMod > 0 ? '+' : ''}${activeForm.apararMod})`}</span>
+                    <span className="text-3xl font-serif font-extrabold text-amber-400 block drop-shadow-[0_0_6px_rgba(245,158,11,0.25)]">{getParry(activeForm)}</span>
+                    <span className="text-[9px] text-slate-500 block font-mono">½ dLutar + 2 {activeForm.apararMod !== 0 && `(${activeForm.apararMod > 0 ? '+' : ''}${activeForm.apararMod})`}</span>
                     {isEditable && (
-                      <div className="flex items-center justify-center gap-1 mt-1 border-t border-slate-900 pt-1.5">
-                        <span className="text-[9px] text-slate-500">Aj:</span>
+                      <div className="flex items-center justify-center gap-1.5 mt-2 border-t border-slate-900/60 pt-2">
+                        <span className="text-[9px] text-slate-500 font-bold uppercase">Ajuste:</span>
                         <input 
                           type="number" 
                           value={activeForm.apararMod}
@@ -2012,20 +2032,20 @@ export default function App() {
                             const val = parseInt(e.target.value) || 0;
                             updateActiveForm(form => ({ ...form, apararMod: val }));
                           }}
-                          className="w-7 text-center bg-slate-900 border border-slate-800 text-[10px] text-amber-400 font-bold rounded focus:outline-none"
+                          className="w-8 text-center bg-slate-900 border border-slate-800 text-[10px] text-amber-400 font-bold rounded py-0.5 focus:outline-none focus:border-amber-500/50"
                         />
                       </div>
                     )}
                   </div>
 
-                  <div className="bg-slate-950 p-3 rounded-xl border border-slate-850 text-center space-y-1">
-                    <div className="flex justify-center text-red-400"><Heart className="w-5 h-5" /></div>
+                  <div className="bg-slate-950 p-4 rounded-xl border border-red-500/10 hover:border-red-500/30 transition-all duration-300 text-center space-y-1.5 relative group shadow-inner">
+                    <div className="flex justify-center text-red-400 drop-shadow-[0_0_4px_rgba(239,68,68,0.2)]"><Heart className="w-5 h-5 group-hover:scale-110 transition-transform duration-300" /></div>
                     <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Resistência</span>
-                    <span className="text-2xl font-serif font-bold text-amber-100 block">{getToughness(activeForm)}</span>
-                    <span className="text-[9px] text-slate-500 block">½ dVigor + 2 {activeForm.resistenciaMod !== 0 && `(${activeForm.resistenciaMod > 0 ? '+' : ''}${activeForm.resistenciaMod})`}</span>
+                    <span className="text-3xl font-serif font-extrabold text-red-400 block drop-shadow-[0_0_6px_rgba(239,68,68,0.25)]">{getToughness(activeForm)}</span>
+                    <span className="text-[9px] text-slate-500 block font-mono">½ dVigor + 2 {activeForm.resistenciaMod !== 0 && `(${activeForm.resistenciaMod > 0 ? '+' : ''}${activeForm.resistenciaMod})`}</span>
                     {isEditable && (
-                      <div className="flex items-center justify-center gap-1 mt-1 border-t border-slate-900 pt-1.5">
-                        <span className="text-[9px] text-slate-500">Aj:</span>
+                      <div className="flex items-center justify-center gap-1.5 mt-2 border-t border-slate-900/60 pt-2">
+                        <span className="text-[9px] text-slate-500 font-bold uppercase">Ajuste:</span>
                         <input 
                           type="number" 
                           value={activeForm.resistenciaMod}
@@ -2033,7 +2053,7 @@ export default function App() {
                             const val = parseInt(e.target.value) || 0;
                             updateActiveForm(form => ({ ...form, resistenciaMod: val }));
                           }}
-                          className="w-7 text-center bg-slate-900 border border-slate-800 text-[10px] text-amber-400 font-bold rounded focus:outline-none"
+                          className="w-8 text-center bg-slate-900 border border-slate-800 text-[10px] text-amber-400 font-bold rounded py-0.5 focus:outline-none focus:border-amber-500/50"
                         />
                       </div>
                     )}
@@ -2095,39 +2115,63 @@ export default function App() {
                     return (
                       <div 
                         key={skill.nome}
-                        className={`p-2 px-3 rounded-xl border flex items-center justify-between transition-all ${
+                        onClick={() => {
+                          if (isEditable) {
+                            updateActiveForm(form => {
+                              const list = [...form.pericias];
+                              list[index] = { ...list[index], possui: !skill.possui };
+                              return { ...form, pericias: list };
+                            });
+                          }
+                        }}
+                        className={`p-3 px-4 rounded-xl border flex items-center justify-between transition-all duration-305 select-none cursor-pointer ${
                           skill.possui 
-                            ? 'bg-slate-950 border-slate-800/80' 
-                            : 'bg-slate-950/20 border-slate-900 text-slate-600 opacity-45'
+                            ? 'bg-slate-900/90 border-amber-500/20 shadow-md shadow-amber-500/5 hover:border-amber-500/40 hover:shadow-amber-500/10' 
+                            : 'bg-slate-950/20 border-slate-900/60 text-slate-500 opacity-60 hover:opacity-85 hover:border-slate-800'
                         }`}
                       >
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-3">
                           {isEditable ? (
-                            <input 
-                              type="checkbox"
-                              checked={skill.possui}
-                              onChange={e => {
-                                const checked = e.target.checked;
-                                updateActiveForm(form => {
-                                  const list = [...form.pericias];
-                                  list[index] = { ...list[index], possui: checked };
-                                  return { ...form, pericias: list };
-                                });
-                              }}
-                              className="rounded border-slate-800 bg-slate-900 text-amber-500 focus:ring-0 focus:ring-offset-0 cursor-pointer h-4 w-4"
-                            />
+                            <div className={`w-4.5 h-4.5 rounded flex items-center justify-center border transition-all ${
+                              skill.possui 
+                                ? 'bg-amber-500 border-amber-400 text-slate-950 shadow-sm shadow-amber-500/30' 
+                                : 'border-slate-850 bg-slate-950'
+                            }`}>
+                              {skill.possui && <Check className="w-3.5 h-3.5 stroke-[3px]" />}
+                            </div>
                           ) : (
-                            <div className={`w-2 h-2 rounded-full ${skill.possui ? 'bg-amber-500 animate-pulse' : 'bg-slate-800'}`} />
+                            <div className={`w-2 h-2 rounded-full ${skill.possui ? 'bg-amber-400 shadow shadow-amber-400/80 animate-pulse' : 'bg-slate-800'}`} />
                           )}
                           
-                          <span className="text-xs font-bold text-slate-100 flex items-center gap-1">
-                            {skill.nome}
-                            <span className="text-[9px] text-slate-500 font-normal">({skill.atributoAssociado.substring(0, 3)})</span>
-                          </span>
+                          <div className="flex flex-col">
+                            <span className={`text-xs font-bold transition-colors ${skill.possui ? 'text-amber-100' : 'text-slate-500'}`}>
+                              {skill.nome}
+                              <span className="text-[9px] text-slate-500 font-normal ml-1">({skill.atributoAssociado.substring(0, 3)})</span>
+                            </span>
+                            
+                            {/* Visual die pips representing skill training tier */}
+                            <div className="flex gap-0.5 mt-1">
+                              {[1, 2, 3, 4, 5].map((level) => {
+                                const dieLevels = ['d4', 'd6', 'd8', 'd10', 'd12'];
+                                const currentLevelIndex = dieLevels.indexOf(skill.dado) + 1;
+                                const active = skill.possui && level <= currentLevelIndex;
+                                return (
+                                  <div 
+                                    key={level} 
+                                    className={`h-0.5 rounded-sm w-3.5 transition-colors duration-300 ${
+                                      active 
+                                        ? 'bg-amber-500 shadow-sm shadow-amber-500/50' 
+                                        : 'bg-slate-850'
+                                    }`} 
+                                  />
+                                );
+                              })}
+                            </div>
+                          </div>
                         </div>
 
                         {/* Die / Value setup */}
-                        <div className="flex items-center gap-1.5">
+                        <div className="flex items-center gap-1.5" onClick={e => e.stopPropagation()}>
                           {skill.possui ? (
                             isEditable ? (
                               <>
@@ -2141,12 +2185,12 @@ export default function App() {
                                       return { ...form, pericias: list };
                                     });
                                   }}
-                                  className="bg-slate-900 border border-slate-800 text-[10px] font-mono text-amber-400 font-bold rounded py-0.5 px-1 focus:outline-none"
+                                  className="bg-slate-950 border border-slate-800 hover:border-slate-700 text-[10px] font-mono text-amber-400 font-bold rounded py-0.5 px-1.5 focus:outline-none cursor-pointer"
                                 >
                                   {['d4', 'd6', 'd8', 'd10', 'd12'].map(d => <option key={d} value={d}>{d}</option>)}
                                 </select>
                                 
-                                <div className="flex items-center bg-slate-900 border border-slate-800 rounded px-1 py-0.5 text-[9px] text-amber-500 font-bold">
+                                <div className="flex items-center bg-slate-950 border border-slate-800 rounded px-1.5 py-0.5 text-[9px] text-amber-500 font-bold">
                                   <span>+</span>
                                   <input 
                                     type="number" 
@@ -2169,13 +2213,13 @@ export default function App() {
                               </span>
                             )
                           ) : (
-                            <span className="text-[10px] italic text-slate-600">Não treinado (d4-2)</span>
+                            <span className="text-[10px] italic text-slate-650">Não treinado (d4-2)</span>
                           )}
 
                           {isEditable && isCustom && (
                             <button 
                               onClick={() => handleRemoveCustomSkill(skill.nome)}
-                              className="p-1 hover:text-red-400 text-slate-500 transition ml-1"
+                              className="p-1 hover:text-red-400 text-slate-500 transition ml-1 cursor-pointer"
                               title="Deletar perícia personalizada"
                             >
                               <Trash className="w-3 h-3" />
