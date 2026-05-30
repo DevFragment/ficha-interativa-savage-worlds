@@ -41,130 +41,131 @@ function saveSheets(sheets: ServerSheetStore) {
 export const app = express();
 app.use(express.json({ limit: "10mb" }));
 
+// API Routes (registered at module load time so they work on Vercel serverless too)
+
+// Create a sheet
+app.post("/api/sheets", (req, res) => {
+  try {
+    const sheets = loadSheets();
+    const id = "sheet_" + Math.random().toString(36).substring(2, 11);
+    const editToken = "edit_" + Math.random().toString(36).substring(2, 15);
+    
+    const newSheet = {
+      ...req.body,
+      id,
+      editToken,
+      lastUpdated: Date.now(),
+    };
+    
+    sheets[id] = newSheet;
+    saveSheets(sheets);
+    
+    res.status(201).json({ id, editToken, sheet: newSheet });
+  } catch (error) {
+    res.status(500).json({ error: "Erro interno ao criar ficha." });
+  }
+});
+
+// Get a sheet
+app.get("/api/sheets/:id", (req, res) => {
+  try {
+    const sheets = loadSheets();
+    const { id } = req.params;
+    const { token } = req.query;
+    
+    const sheet = sheets[id];
+    if (!sheet) {
+       res.status(404).json({ error: "Ficha não encontrada." });
+       return;
+    }
+    
+    const isEditable = token === sheet.editToken;
+    
+    // Strip editToken for privacy when returning sheet to read-only viewers
+    const responseSheet = { ...sheet };
+    if (!isEditable) {
+      delete responseSheet.editToken;
+    }
+    
+    res.json({ sheet: responseSheet, isEditable });
+  } catch (error) {
+    res.status(500).json({ error: "Erro ao carregar a ficha." });
+  }
+});
+
+// Update a sheet
+app.put("/api/sheets/:id", (req, res) => {
+  try {
+    const sheets = loadSheets();
+    const { id } = req.params;
+    const { editToken } = req.body;
+    
+    const sheet = sheets[id];
+    if (!sheet) {
+       res.status(404).json({ error: "Ficha não encontrada." });
+       return;
+    }
+    
+    if (!editToken || sheet.editToken !== editToken) {
+       res.status(403).json({ error: "Acesso negado. Token de edição inválido." });
+       return;
+    }
+    
+    // Update sheet data
+    const updatedSheet = {
+      ...req.body,
+      id,
+      editToken: sheet.editToken, // ensure editToken never changes
+      lastUpdated: Date.now(),
+    };
+    
+    sheets[id] = updatedSheet;
+    saveSheets(sheets);
+    
+    res.json({ success: true, sheet: updatedSheet });
+  } catch (error) {
+    res.status(500).json({ error: "Erro ao salvar alterações da ficha." });
+  }
+});
+
+// Duplicate a sheet
+app.post("/api/sheets/:id/duplicate", (req, res) => {
+  try {
+    const sheets = loadSheets();
+    const { id } = req.params;
+    
+    const source = sheets[id];
+    if (!source) {
+       res.status(404).json({ error: "Ficha de origem não encontrada." });
+       return;
+    }
+    
+    const newId = "sheet_" + Math.random().toString(36).substring(2, 11);
+    const newEditToken = "edit_" + Math.random().toString(36).substring(2, 15);
+    
+    const duplicatedSheet = {
+      ...source,
+      id: newId,
+      editToken: newEditToken,
+      nomePersonagem: `${source.nomePersonagem} (Cópia)`,
+      lastUpdated: Date.now(),
+    };
+    
+    sheets[newId] = duplicatedSheet;
+    saveSheets(sheets);
+    
+    res.status(201).json({ id: newId, editToken: newEditToken, sheet: duplicatedSheet });
+  } catch (error) {
+    res.status(500).json({ error: "Erro ao duplicar a ficha." });
+  }
+});
+
+// Local development server (Vite + listen) — skipped on Vercel
 async function startServer() {
   if (isVercel) {
     return;
   }
   const PORT = process.env.PORT ? parseInt(process.env.PORT) : 3001;
-
-  // API Routes
-  
-  // Create a sheet
-  app.post("/api/sheets", (req, res) => {
-    try {
-      const sheets = loadSheets();
-      const id = "sheet_" + Math.random().toString(36).substring(2, 11);
-      const editToken = "edit_" + Math.random().toString(36).substring(2, 15);
-      
-      const newSheet = {
-        ...req.body,
-        id,
-        editToken,
-        lastUpdated: Date.now(),
-      };
-      
-      sheets[id] = newSheet;
-      saveSheets(sheets);
-      
-      res.status(201).json({ id, editToken, sheet: newSheet });
-    } catch (error) {
-      res.status(500).json({ error: "Erro interno ao criar ficha." });
-    }
-  });
-
-  // Get a sheet
-  app.get("/api/sheets/:id", (req, res) => {
-    try {
-      const sheets = loadSheets();
-      const { id } = req.params;
-      const { token } = req.query;
-      
-      const sheet = sheets[id];
-      if (!sheet) {
-         res.status(404).json({ error: "Ficha não encontrada." });
-         return;
-      }
-      
-      const isEditable = token === sheet.editToken;
-      
-      // Strip editToken for privacy when returning sheet to read-only viewers
-      const responseSheet = { ...sheet };
-      if (!isEditable) {
-        delete responseSheet.editToken;
-      }
-      
-      res.json({ sheet: responseSheet, isEditable });
-    } catch (error) {
-      res.status(500).json({ error: "Erro ao carregar a ficha." });
-    }
-  });
-
-  // Update a sheet
-  app.put("/api/sheets/:id", (req, res) => {
-    try {
-      const sheets = loadSheets();
-      const { id } = req.params;
-      const { editToken } = req.body;
-      
-      const sheet = sheets[id];
-      if (!sheet) {
-         res.status(404).json({ error: "Ficha não encontrada." });
-         return;
-      }
-      
-      if (!editToken || sheet.editToken !== editToken) {
-         res.status(403).json({ error: "Acesso negado. Token de edição inválido." });
-         return;
-      }
-      
-      // Update sheet data
-      const updatedSheet = {
-        ...req.body,
-        id,
-        editToken: sheet.editToken, // ensure editToken never changes
-        lastUpdated: Date.now(),
-      };
-      
-      sheets[id] = updatedSheet;
-      saveSheets(sheets);
-      
-      res.json({ success: true, sheet: updatedSheet });
-    } catch (error) {
-      res.status(500).json({ error: "Erro ao salvar alterações da ficha." });
-    }
-  });
-
-  // Duplicate a sheet
-  app.post("/api/sheets/:id/duplicate", (req, res) => {
-    try {
-      const sheets = loadSheets();
-      const { id } = req.params;
-      
-      const source = sheets[id];
-      if (!source) {
-         res.status(404).json({ error: "Ficha de origem não encontrada." });
-         return;
-      }
-      
-      const newId = "sheet_" + Math.random().toString(36).substring(2, 11);
-      const newEditToken = "edit_" + Math.random().toString(36).substring(2, 15);
-      
-      const duplicatedSheet = {
-        ...source,
-        id: newId,
-        editToken: newEditToken,
-        nomePersonagem: `${source.nomePersonagem} (Cópia)`,
-        lastUpdated: Date.now(),
-      };
-      
-      sheets[newId] = duplicatedSheet;
-      saveSheets(sheets);
-      
-      res.status(201).json({ id: newId, editToken: newEditToken, sheet: duplicatedSheet });
-    } catch (error) {
-      res.status(500).json({ error: "Erro ao duplicar a ficha." });
-    }
-  });
 
   // Vite Integration for Assets and Client Rendering
   if (process.env.NODE_ENV !== "production") {
@@ -188,3 +189,4 @@ async function startServer() {
 }
 
 startServer();
+
