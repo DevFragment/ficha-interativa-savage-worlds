@@ -22,18 +22,65 @@ const dbPath = isVercel
 // falls back to local JSON file for development.
 // ---------------------------------------------------------------------------
 
-async function getRedis() {
-  // Vercel Upstash integration auto-injects these env vars (KV_REST_API_URL or UPSTASH_REDIS_REST_URL)
-  const url = process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL;
-  const token = process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN;
-  if (isVercel && url && token) {
+let standardRedisClient: any = null;
+
+async function getRedis(): Promise<{ get: (key: string) => Promise<any>, set: (key: string, value: string) => Promise<void>, del: (key: string) => Promise<void> } | null> {
+  // 1. Check standard Redis via REDIS_URL
+  const redisUrl = process.env.REDIS_URL;
+  if (redisUrl) {
     try {
-      const { Redis } = await import("@upstash/redis");
-      return new Redis({ url, token });
-    } catch {
-      return null;
+      if (!standardRedisClient) {
+        const { createClient } = await import("redis");
+        const client = createClient({ url: redisUrl });
+        client.on('error', (err) => console.error('Redis Client Error', err));
+        await client.connect();
+        standardRedisClient = client;
+      }
+      return {
+        get: async (key: string) => {
+          const val = await standardRedisClient.get(key);
+          if (!val) return null;
+          try {
+            return JSON.parse(val);
+          } catch {
+            return val;
+          }
+        },
+        set: async (key: string, value: string) => {
+          await standardRedisClient.set(key, value);
+        },
+        del: async (key: string) => {
+          await standardRedisClient.del(key);
+        }
+      };
+    } catch (err) {
+      console.error("Erro ao usar Redis padrão:", err);
     }
   }
+
+  // 2. Check Upstash REST KV
+  const url = process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL;
+  const token = process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN;
+  if (url && token) {
+    try {
+      const { Redis } = await import("@upstash/redis");
+      const upstashRedis = new Redis({ url, token });
+      return {
+        get: async (key: string) => {
+          return await upstashRedis.get(key);
+        },
+        set: async (key: string, value: string) => {
+          await upstashRedis.set(key, value);
+        },
+        del: async (key: string) => {
+          await upstashRedis.del(key);
+        }
+      };
+    } catch (err) {
+      console.error("Erro ao usar Upstash Redis:", err);
+    }
+  }
+
   return null;
 }
 
@@ -444,7 +491,7 @@ app.get("/api/health", (_req, res) => {
   res.json({
     ok: true,
     isVercel,
-    hasRedis: !!(process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL),
+    hasRedis: !!(process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL || process.env.REDIS_URL),
     timestamp: Date.now(),
   });
 });
