@@ -1543,11 +1543,11 @@ export default function App() {
                 alt="Fundo do Personagem"
                 referrerPolicy="no-referrer"
                 style={{
-                  transform: `scale(${activeForm?.tokenScale ?? 1.2}) translateY(${(activeForm?.tokenOffsetY ?? 0) * 1.5}px)`,
+                  transform: `scale(${activeForm?.tokenScale ?? 1.1}) translateY(${(activeForm?.tokenOffsetY ?? 0) * 1.2}px)`,
                 }}
-                className="w-full h-full object-cover opacity-25 filter blur-xs"
+                className="w-full h-full object-cover opacity-35 filter blur-[1px] transition-all duration-150"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/85 to-transparent" />
+              <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/85 to-slate-900/40" />
             </div>
           )}
 
@@ -1559,25 +1559,25 @@ export default function App() {
             {/* Avatar upload / change area with Real base64 encoder and fallback URL input */}
             <div className="flex flex-col items-center gap-2 shrink-0 z-10">
               {/* Token/Card Display Container */}
-              <div className={`${
-                activeForm?.tokenStyle === 'card' 
-                  ? 'w-36 h-48 rounded-xl' 
-                  : activeForm?.tokenStyle === 'backdrop'
-                    ? 'w-20 h-20 rounded-full'
+              {activeForm?.tokenStyle !== 'backdrop' && (
+                <div className={`${
+                  activeForm?.tokenStyle === 'card' 
+                    ? 'w-36 h-48 rounded-xl' 
                     : 'w-28 h-28 rounded-full'
-              } overflow-hidden relative shadow-lg bg-slate-950 transition-all duration-300 ${
-                activeForm?.tokenBorder ? getTokenFrameClass(activeForm.tokenBorder, activeForm?.tokenStyle === 'card') : 'border-4 border-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.3)]'
-              }`}>
-                <img 
-                  src={getActiveFormImage()} 
-                  alt="Token do Personagem"
-                  referrerPolicy="no-referrer"
-                  style={{
-                    transform: `scale(${activeForm?.tokenScale ?? 1}) translateY(${activeForm?.tokenOffsetY ?? 0}px)`,
-                  }}
-                  className="w-full h-full object-cover transition-all duration-150" 
-                />
-              </div>
+                } overflow-hidden relative shadow-lg bg-slate-950 transition-all duration-300 ${
+                  activeForm?.tokenBorder ? getTokenFrameClass(activeForm.tokenBorder, activeForm?.tokenStyle === 'card') : 'border-4 border-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.3)]'
+                }`}>
+                  <img 
+                    src={getActiveFormImage()} 
+                    alt="Token do Personagem"
+                    referrerPolicy="no-referrer"
+                    style={{
+                      transform: `scale(${activeForm?.tokenScale ?? 1}) translateY(${activeForm?.tokenOffsetY ?? 0}px)`,
+                    }}
+                    className="w-full h-full object-cover transition-all duration-150" 
+                  />
+                </div>
+              )}
 
               {localActiveFormId !== 'base' && (!activeForm?.imageUrl || activeForm.imageUrl.trim() === '') && (
                 <span className="text-[9px] text-amber-200 bg-amber-950/45 px-2 py-0.5 rounded border border-amber-900/40 font-sans font-medium text-center">
@@ -1612,27 +1612,29 @@ export default function App() {
                   </div>
 
                   {/* Select Token Frame Border Style */}
-                  <div className="bg-slate-950/80 p-2 rounded-lg border border-slate-800 flex flex-col gap-1.5">
-                    <span className="text-[8px] text-slate-500 font-bold font-sans tracking-wide uppercase select-none text-center">Moldura do Token</span>
-                    <div className="flex justify-center gap-1.5">
-                      {([
-                        { id: 'amber', color: 'bg-amber-500 border-amber-300', label: 'Âmbar' },
-                        { id: 'gold', color: 'bg-yellow-400 border-amber-300 shadow-[0_0_5px_rgba(253,224,71,0.5)]', label: 'Ouro Rúnico' },
-                        { id: 'iron', color: 'bg-slate-650 border-slate-400', label: 'Ferro Gótico' },
-                        { id: 'neon', color: 'bg-cyan-400 border-cyan-200 animate-pulse', label: 'Cyber Neon' },
-                        { id: 'fire', color: 'bg-orange-500 border-orange-300', label: 'Fogo Mágico' }
-                      ] as const).map(b => (
-                        <button
-                          key={b.id}
-                          onClick={() => updateActiveForm(form => ({ ...form, tokenBorder: b.id }))}
-                          className={`w-4 h-4 rounded-full border cursor-pointer transition-transform hover:scale-125 ${b.color} ${
-                            (activeForm?.tokenBorder || 'amber') === b.id ? 'ring-2 ring-white scale-110' : 'opacity-70'
-                          }`}
-                          title={b.label}
-                        />
-                      ))}
+                  {activeForm?.tokenStyle !== 'backdrop' && (
+                    <div className="bg-slate-950/80 p-2 rounded-lg border border-slate-800 flex flex-col gap-1.5">
+                      <span className="text-[8px] text-slate-500 font-bold font-sans tracking-wide uppercase select-none text-center">Moldura do Token</span>
+                      <div className="flex justify-center gap-1.5">
+                        {([
+                          { id: 'amber', color: 'bg-amber-500 border-amber-300', label: 'Âmbar' },
+                          { id: 'gold', color: 'bg-yellow-400 border-amber-300 shadow-[0_0_5px_rgba(253,224,71,0.5)]', label: 'Ouro Rúnico' },
+                          { id: 'iron', color: 'bg-slate-650 border-slate-400', label: 'Ferro Gótico' },
+                          { id: 'neon', color: 'bg-cyan-400 border-cyan-200 animate-pulse', label: 'Cyber Neon' },
+                          { id: 'fire', color: 'bg-orange-500 border-orange-300', label: 'Fogo Mágico' }
+                        ] as const).map(b => (
+                          <button
+                            key={b.id}
+                            onClick={() => updateActiveForm(form => ({ ...form, tokenBorder: b.id }))}
+                            className={`w-4 h-4 rounded-full border cursor-pointer transition-transform hover:scale-125 ${b.color} ${
+                              (activeForm?.tokenBorder || 'amber') === b.id ? 'ring-2 ring-white scale-110' : 'opacity-70'
+                            }`}
+                            title={b.label}
+                          />
+                        ))}
+                      </div>
                     </div>
-                  </div>
+                  )}
 
                   {/* Token Zoom / Offset adjustments */}
                   <div className="bg-slate-950/80 p-2 rounded-lg border border-slate-800 flex flex-col gap-1.5 text-[9px] text-slate-450">
@@ -1754,52 +1756,37 @@ export default function App() {
                   placeholder="Nome do Personagem"
                   value={sheet.nomePersonagem}
                   onChange={e => updateSheet(prev => ({ ...prev, nomePersonagem: e.target.value }))}
+                  style={{ textShadow: activeForm?.tokenStyle === 'backdrop' ? '0 2px 4px rgba(0,0,0,0.95), 0 0 12px rgba(0,0,0,0.6)' : undefined }}
                   className="bg-transparent border-b border-transparent focus:border-amber-500 focus:outline-none text-xl font-serif font-bold text-amber-100 w-full text-center md:text-left"
                 />
               </div>
 
               {/* Editable header details */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs md:text-xs">
-                <div className="bg-slate-950/40 p-2 rounded-lg border border-slate-850">
-                  <span className="block text-[10px] text-slate-500 font-bold">Jogador</span>
-                  <input 
-                    type="text" 
-                    disabled={!isEditable}
-                    value={sheet.jogador}
-                    onChange={e => updateSheet(prev => ({ ...prev, jogador: e.target.value }))}
-                    className="bg-transparent w-full font-semibold focus:outline-none focus:border-b focus:border-amber-500 mt-0.5 text-slate-200 text-center md:text-left"
-                  />
-                </div>
-                <div className="bg-slate-950/40 p-2 rounded-lg border border-slate-850">
-                  <span className="block text-[10px] text-slate-500 font-bold">Conceito</span>
-                  <input 
-                    type="text" 
-                    disabled={!isEditable}
-                    value={sheet.conceito}
-                    onChange={e => updateSheet(prev => ({ ...prev, conceito: e.target.value }))}
-                    className="bg-transparent w-full font-semibold focus:outline-none focus:border-b focus:border-amber-500 mt-0.5 text-slate-200 text-center md:text-left"
-                  />
-                </div>
-                <div className="bg-slate-950/40 p-2 rounded-lg border border-slate-850">
-                  <span className="block text-[10px] text-slate-500 font-bold">Raça</span>
-                  <input 
-                    type="text" 
-                    disabled={!isEditable}
-                    value={sheet.raca}
-                    onChange={e => updateSheet(prev => ({ ...prev, raca: e.target.value }))}
-                    className="bg-transparent w-full font-semibold focus:outline-none focus:border-b focus:border-amber-500 mt-0.5 text-slate-200 text-center md:text-left"
-                  />
-                </div>
-                <div className="bg-slate-950/40 p-2 rounded-lg border border-slate-850">
-                  <span className="block text-[10px] text-slate-500 font-bold">Campanha</span>
-                  <input 
-                    type="text" 
-                    disabled={!isEditable}
-                    value={sheet.campanha}
-                    onChange={e => updateSheet(prev => ({ ...prev, campanha: e.target.value }))}
-                    className="bg-transparent w-full font-semibold focus:outline-none focus:border-b focus:border-amber-500 mt-0.5 text-slate-200 text-center md:text-left"
-                  />
-                </div>
+                {([
+                  { label: 'Jogador', key: 'jogador' as const },
+                  { label: 'Conceito', key: 'conceito' as const },
+                  { label: 'Raça', key: 'raca' as const },
+                  { label: 'Campanha', key: 'campanha' as const }
+                ]).map(field => (
+                  <div 
+                    key={field.key} 
+                    className={`p-2 rounded-lg border transition-all duration-300 ${
+                      activeForm?.tokenStyle === 'backdrop' 
+                        ? 'bg-slate-950/70 border-slate-800/80 backdrop-blur-md shadow-md' 
+                        : 'bg-slate-950/40 border-slate-850'
+                    }`}
+                  >
+                    <span className="block text-[10px] text-slate-500 font-bold">{field.label}</span>
+                    <input 
+                      type="text" 
+                      disabled={!isEditable}
+                      value={sheet[field.key]}
+                      onChange={e => updateSheet(prev => ({ ...prev, [field.key]: e.target.value }))}
+                      className="bg-transparent w-full font-semibold focus:outline-none focus:border-b focus:border-amber-500 mt-0.5 text-slate-200 text-center md:text-left"
+                    />
+                  </div>
+                ))}
               </div>
             </div>
           </div>
