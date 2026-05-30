@@ -329,6 +329,23 @@ const parseSavageWorldsPDFFields = (fieldData: Record<string, string>): Characte
   };
 };
 
+const getTokenFrameClass = (border: 'amber' | 'gold' | 'iron' | 'neon' | 'fire', isCard: boolean): string => {
+  const rounded = isCard ? 'rounded-xl' : 'rounded-full';
+  switch (border) {
+    case 'gold':
+      return `border-4 border-amber-300 shadow-[0_0_15px_rgba(245,158,11,0.4)] ring-2 ring-amber-600 ring-offset-2 ring-offset-slate-950 ${rounded}`;
+    case 'iron':
+      return `border-4 border-slate-650 shadow-[0_0_10px_rgba(71,85,105,0.4)] ring-4 ring-slate-950 ${rounded}`;
+    case 'neon':
+      return `border-4 border-cyan-400 shadow-[0_0_18px_rgba(34,211,238,0.5)] animate-pulse ${rounded}`;
+    case 'fire':
+      return `border-4 border-orange-500 shadow-[0_0_18px_rgba(249,115,22,0.5)] border-dashed ${rounded}`;
+    case 'amber':
+    default:
+      return `border-4 border-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.3)] ${rounded}`;
+  }
+};
+
 export default function App() {
   const [sheet, setSheet] = useState<CharacterSheet | null>(null);
   const [isEditable, setIsEditable] = useState<boolean>(true);
@@ -1516,22 +1533,48 @@ export default function App() {
         </div>
       )}
 
-      {/* Hero Metadata Header */}
-      <header className="max-w-7xl mx-auto px-4 mt-6">
-        <div className="bg-slate-900 border border-slate-800/80 rounded-2xl p-5 md:p-6 shadow-xl relative overflow-hidden flex flex-col md:flex-row items-center justify-between gap-5">
-          <div className="absolute right-0 top-0 opacity-5 pointer-events-none translate-x-12 -translate-y-12">
+             <div className="bg-slate-900 border border-slate-800/80 rounded-2xl p-5 md:p-6 shadow-xl relative overflow-hidden flex flex-col md:flex-row items-center justify-between gap-5">
+          {/* Backdrop style character background image */}
+          {activeForm?.tokenStyle === 'backdrop' && (
+            <div className="absolute inset-0 z-0 pointer-events-none">
+              <img 
+                src={getActiveFormImage()} 
+                alt="Fundo do Personagem"
+                referrerPolicy="no-referrer"
+                style={{
+                  transform: `scale(${activeForm?.tokenScale ?? 1.2}) translateY(${(activeForm?.tokenOffsetY ?? 0) * 1.5}px)`,
+                }}
+                className="w-full h-full object-cover opacity-25 filter blur-xs"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/85 to-transparent" />
+            </div>
+          )}
+
+          <div className="absolute right-0 top-0 opacity-5 pointer-events-none translate-x-12 -translate-y-12 z-0">
             <Sword className="w-56 h-56 text-amber-500" />
           </div>
 
-          <div className="w-full flex flex-col md:flex-row items-center gap-5">
+          <div className="w-full flex flex-col md:flex-row items-center gap-5 z-10">
             {/* Avatar upload / change area with Real base64 encoder and fallback URL input */}
-            <div className="flex flex-col items-center gap-2 shrink-0">
-              <div className="w-24 h-24 rounded-full border-4 border-amber-500 overflow-hidden relative shadow-lg bg-slate-950">
+            <div className="flex flex-col items-center gap-2 shrink-0 z-10">
+              {/* Token/Card Display Container */}
+              <div className={`${
+                activeForm?.tokenStyle === 'card' 
+                  ? 'w-36 h-48 rounded-xl' 
+                  : activeForm?.tokenStyle === 'backdrop'
+                    ? 'w-20 h-20 rounded-full'
+                    : 'w-28 h-28 rounded-full'
+              } overflow-hidden relative shadow-lg bg-slate-950 transition-all duration-300 ${
+                activeForm?.tokenBorder ? getTokenFrameClass(activeForm.tokenBorder, activeForm?.tokenStyle === 'card') : 'border-4 border-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.3)]'
+              }`}>
                 <img 
                   src={getActiveFormImage()} 
                   alt="Token do Personagem"
                   referrerPolicy="no-referrer"
-                  className="w-full h-full object-cover" 
+                  style={{
+                    transform: `scale(${activeForm?.tokenScale ?? 1}) translateY(${activeForm?.tokenOffsetY ?? 0}px)`,
+                  }}
+                  className="w-full h-full object-cover transition-all duration-150" 
                 />
               </div>
 
@@ -1542,10 +1585,126 @@ export default function App() {
               )}
               
               {isEditable && (
-                <div className="flex flex-col gap-1.5 w-full max-w-[170px]">
+                <div className="flex flex-col gap-2 w-full max-w-[190px]">
+                  {/* Select Token Style (Circle, Card, Backdrop) */}
+                  <div className="bg-slate-950/80 p-2 rounded-lg border border-slate-800 flex flex-col gap-1.5">
+                    <span className="text-[8px] text-slate-500 font-bold font-sans tracking-wide uppercase select-none text-center">Tipo de Retrato</span>
+                    <div className="grid grid-cols-3 gap-1">
+                      {([
+                        { id: 'circle', label: 'Token' },
+                        { id: 'card', label: 'Cartão' },
+                        { id: 'backdrop', label: 'Fundo' }
+                      ] as const).map(style => (
+                        <button
+                          key={style.id}
+                          onClick={() => updateActiveForm(form => ({ ...form, tokenStyle: style.id }))}
+                          className={`py-1 text-[9px] font-bold rounded border transition-all cursor-pointer ${
+                            (activeForm?.tokenStyle || 'circle') === style.id 
+                              ? 'bg-amber-500 border-amber-400 text-slate-950' 
+                              : 'bg-slate-900 border-slate-850 text-slate-400 hover:text-slate-200'
+                          }`}
+                        >
+                          {style.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Select Token Frame Border Style */}
+                  <div className="bg-slate-950/80 p-2 rounded-lg border border-slate-800 flex flex-col gap-1.5">
+                    <span className="text-[8px] text-slate-500 font-bold font-sans tracking-wide uppercase select-none text-center">Moldura do Token</span>
+                    <div className="flex justify-center gap-1.5">
+                      {([
+                        { id: 'amber', color: 'bg-amber-500 border-amber-300', label: 'Âmbar' },
+                        { id: 'gold', color: 'bg-yellow-400 border-amber-300 shadow-[0_0_5px_rgba(253,224,71,0.5)]', label: 'Ouro Rúnico' },
+                        { id: 'iron', color: 'bg-slate-650 border-slate-400', label: 'Ferro Gótico' },
+                        { id: 'neon', color: 'bg-cyan-400 border-cyan-200 animate-pulse', label: 'Cyber Neon' },
+                        { id: 'fire', color: 'bg-orange-500 border-orange-300', label: 'Fogo Mágico' }
+                      ] as const).map(b => (
+                        <button
+                          key={b.id}
+                          onClick={() => updateActiveForm(form => ({ ...form, tokenBorder: b.id }))}
+                          className={`w-4 h-4 rounded-full border cursor-pointer transition-transform hover:scale-125 ${b.color} ${
+                            (activeForm?.tokenBorder || 'amber') === b.id ? 'ring-2 ring-white scale-110' : 'opacity-70'
+                          }`}
+                          title={b.label}
+                        />
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Token Zoom / Offset adjustments */}
+                  <div className="bg-slate-950/80 p-2 rounded-lg border border-slate-800 flex flex-col gap-1.5 text-[9px] text-slate-450">
+                    <span className="text-[8px] text-slate-500 font-bold font-sans tracking-wide uppercase select-none text-center">Ajustar Posição</span>
+                    <div className="space-y-1">
+                      <div className="flex justify-between items-center text-[8px] text-slate-400">
+                        <span>ZOOM:</span>
+                        <span className="font-mono">{(activeForm?.tokenScale ?? 1).toFixed(1)}x</span>
+                      </div>
+                      <input 
+                        type="range" 
+                        min="0.5" 
+                        max="3" 
+                        step="0.1"
+                        value={activeForm?.tokenScale ?? 1}
+                        onChange={e => {
+                          const val = parseFloat(e.target.value);
+                          updateActiveForm(form => ({ ...form, tokenScale: val }));
+                        }}
+                        className="w-full h-1 bg-slate-900 rounded-lg appearance-none cursor-pointer accent-amber-500"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <div className="flex justify-between items-center text-[8px] text-slate-400">
+                        <span>VERTICAL:</span>
+                        <span className="font-mono">{(activeForm?.tokenOffsetY ?? 0)}px</span>
+                      </div>
+                      <input 
+                        type="range" 
+                        min="-60" 
+                        max="60" 
+                        step="1"
+                        value={activeForm?.tokenOffsetY ?? 0}
+                        onChange={e => {
+                          const val = parseInt(e.target.value);
+                          updateActiveForm(form => ({ ...form, tokenOffsetY: val }));
+                        }}
+                        className="w-full h-1 bg-slate-900 rounded-lg appearance-none cursor-pointer accent-amber-500"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Preset Avatars quick select */}
+                  <div className="bg-slate-950/80 p-2 rounded-lg border border-slate-800 flex flex-col gap-1.5">
+                    <span className="text-[8px] text-slate-500 font-bold font-sans tracking-wide uppercase select-none text-center">Galeria de Avatares</span>
+                    <select
+                      onChange={e => {
+                        const val = e.target.value;
+                        if (val) {
+                          updateActiveForm(form => ({ 
+                            ...form, 
+                            imageUrl: val,
+                            tokenScale: 1,
+                            tokenOffsetY: 0
+                          }));
+                          setToast("Retrato pronto carregado!");
+                        }
+                      }}
+                      className="w-full bg-slate-900 border border-slate-800 rounded px-1.5 py-1 text-[9px] text-slate-350 focus:outline-none cursor-pointer"
+                    >
+                      <option value="">-- Escolher Pronto --</option>
+                      <option value="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=350&h=350&fit=crop&q=80">Guerreira / Exploradora</option>
+                      <option value="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=350&h=350&fit=crop&q=80">Guerreiro / Ladino</option>
+                      <option value="https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=350&h=350&fit=crop&q=80">Maga / Elfa</option>
+                      <option value="https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=350&h=350&fit=crop&q=80">Bárbaro / Monge</option>
+                      <option value="https://images.unsplash.com/photo-1559650656-5d1d361ad10e?w=350&h=350&fit=crop&q=80">Ciborgue / Tecnomago</option>
+                      <option value="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=350&h=350&fit=crop&q=80">Pistoleiro / Caçador</option>
+                    </select>
+                  </div>
+
                   {/* Robust, direct native file input with custom file upload styling */}
-                  <div className="bg-slate-950/80 p-1.5 rounded-lg border border-slate-800 flex flex-col gap-1">
-                    <span className="text-[8px] text-slate-500 font-bold font-sans tracking-wide uppercase select-none text-center">Upload de Foto</span>
+                  <div className="bg-slate-950/80 p-1.5 rounded-lg border border-slate-850 flex flex-col gap-1">
+                    <span className="text-[8px] text-slate-500 font-bold font-sans tracking-wide uppercase select-none text-center">Fazer Upload</span>
                     <input 
                       type="file" 
                       accept="image/*" 
@@ -1565,7 +1724,7 @@ export default function App() {
                         const val = e.target.value;
                         updateActiveForm(form => ({ ...form, imageUrl: val }));
                       }}
-                      className="w-full bg-slate-900 border border-slate-800 rounded px-1.5 py-0.5 text-[9px] text-slate-300 placeholder-slate-600 focus:outline-none focus:border-amber-500 text-center font-sans"
+                      className="w-full bg-slate-900 border border-slate-800 rounded px-1.5 py-0.5 text-[9px] text-slate-350 placeholder-slate-650 focus:outline-none focus:border-amber-500 text-center font-sans"
                       title="Insira o link de qualquer imagem da internet"
                     />
                   </div>

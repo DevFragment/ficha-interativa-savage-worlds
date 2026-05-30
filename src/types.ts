@@ -51,6 +51,10 @@ export interface CharacterFormState {
   armas: Weapon[];
   apararMod: number; // modifier for Parry
   resistenciaMod: number; // modifier for Toughness
+  tokenBorder?: 'amber' | 'gold' | 'iron' | 'neon' | 'fire';
+  tokenScale?: number;
+  tokenOffsetY?: number;
+  tokenStyle?: 'circle' | 'card' | 'backdrop';
 }
 
 export interface CharacterSheet {
