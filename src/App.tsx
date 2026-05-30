@@ -367,6 +367,30 @@ export default function App() {
   const [showSavedList, setShowSavedList] = useState<boolean>(false);
   const [isCreatingNew, setIsCreatingNew] = useState<boolean>(false);
   const [savedSheets, setSavedSheets] = useState<{id: string, editToken: string, nomePersonagem: string, conceito: string, lastAccessed: number}[]>([]);
+  const [isTempStorage, setIsTempStorage] = useState<boolean>(false);
+
+  // Check backend health/storage status on mount
+  useEffect(() => {
+    fetch('/api/health')
+      .then(res => res.json())
+      .then(data => {
+        if (data.isVercel && !data.hasRedis) {
+          setIsTempStorage(true);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  // Local Storage Backup (Full Sheet data for owner)
+  useEffect(() => {
+    if (sheet && isEditable && sheet.id) {
+      try {
+        localStorage.setItem(`savage_sheet_data_${sheet.id}`, JSON.stringify(sheet));
+      } catch (err) {
+        console.warn('LocalStorage backup failure:', err);
+      }
+    }
+  }, [sheet, isEditable]);
 
   // Auto-clear toast notifications
   useEffect(() => {
@@ -467,6 +491,31 @@ export default function App() {
       const url = `/api/sheets/${id}${token ? `?token=${token}` : ''}`;
       const res = await fetch(url);
       if (!res.ok) {
+        // If 404 and we have a local backup with token, try to restore it!
+        if (res.status === 404 && token) {
+          const backup = localStorage.getItem(`savage_sheet_data_${id}`);
+          if (backup) {
+            try {
+              const parsedBackup = JSON.parse(backup);
+              setToast("Restaurando ficha do backup local...");
+              const restoreRes = await fetch(`/api/sheets/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ...parsedBackup, editToken: token })
+              });
+              if (restoreRes.ok) {
+                const restoreData = await restoreRes.json();
+                setSheet(restoreData.sheet);
+                setIsEditable(true);
+                setLocalActiveFormId(restoreData.sheet.formaAtivaId || 'base');
+                setToast("Sua ficha expirada no servidor foi restaurada automaticamente do backup do seu navegador!");
+                return;
+              }
+            } catch (restoreErr) {
+              console.error("Erro ao tentar auto-restaurar ficha:", restoreErr);
+            }
+          }
+        }
         throw new Error('Ficha não encontrada ou link expirado.');
       }
       const data = await res.json();
@@ -1159,7 +1208,10 @@ export default function App() {
           body: JSON.stringify({ editToken: token })
         });
         if (res.ok) {
-          // Remove from local storage list
+          // Remove from local storage backup and list
+          try {
+            localStorage.removeItem(`savage_sheet_data_${sheet.id}`);
+          } catch (err) {}
           setSavedSheets(prev => {
             const updated = prev.filter(s => s.id !== sheet.id);
             localStorage.setItem('savage_saved_sheets', JSON.stringify(updated));
@@ -1202,6 +1254,19 @@ export default function App() {
             </div>
           </div>
         )}
+
+        {isTempStorage && (
+          <div className="mb-6 max-w-md w-full bg-red-955/40 border border-red-500/20 p-4 rounded-xl flex items-start gap-3 text-red-300 text-xs shadow-lg">
+            <AlertCircle className="w-5 h-5 text-red-450 shrink-0 mt-0.5" />
+            <div className="space-y-1">
+              <p className="font-bold text-red-200">Modo Temporário (Sem Banco de Dados)</p>
+              <p className="leading-relaxed text-slate-400">
+                Esta aplicação está rodando sem banco de dados persistente. Fichas compartilhadas expiram após inatividade. Recomendamos baixar o <strong>JSON</strong> para salvar seu progresso, ou usar a restauração automática.
+              </p>
+            </div>
+          </div>
+        )}
+
         <motion.div 
           initial={{ opacity: 0, y: 15 }}
           animate={{ opacity: 1, y: 0 }}
@@ -1432,6 +1497,22 @@ export default function App() {
       {copiedLink && (
         <div className="bg-amber-500 text-slate-950 text-center py-1.5 text-xs font-mono font-bold">
           Link copiado com sucesso! Guarde-o do seu lado.
+        </div>
+      )}
+
+      {isTempStorage && (
+        <div className="bg-red-950/30 border-b border-red-500/10 py-2.5 px-4 text-xs">
+          <div className="max-w-7xl mx-auto flex items-center gap-2.5 text-red-300">
+            <AlertCircle className="w-4.5 h-4.5 text-red-400 shrink-0" />
+            <div className="flex-1 md:flex md:items-center md:justify-between gap-4">
+              <p className="leading-relaxed">
+                <strong>Atenção:</strong> Esta aplicação está rodando em armazenamento temporário. Fichas compartilhadas expiram após inatividade. Recomendamos baixar e salvar o arquivo <strong>JSON</strong> localmente.
+              </p>
+              <span className="text-[10px] bg-red-500/10 border border-red-500/20 text-red-400 px-2 py-0.5 rounded uppercase font-bold tracking-wider shrink-0 block mt-1 md:mt-0 max-w-fit">
+                Sem Persistência
+              </span>
+            </div>
+          </div>
         </div>
       )}
 

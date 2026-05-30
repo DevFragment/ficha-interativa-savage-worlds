@@ -157,9 +157,24 @@ app.put("/api/sheets/:id", async (req, res) => {
     const { id } = req.params;
     const { editToken } = req.body;
 
-    const sheet = await loadSheet(id);
+    let sheet = await loadSheet(id);
     if (!sheet) {
-      res.status(404).json({ error: "Ficha não encontrada." });
+      // If the sheet does not exist on the server (e.g., cleared from /tmp on Vercel),
+      // allow restoring it if the owner provides the editToken.
+      if (!editToken) {
+        res.status(404).json({ error: "Ficha não encontrada." });
+        return;
+      }
+      
+      const restoredSheet = {
+        ...req.body,
+        id,
+        editToken,
+        lastUpdated: Date.now(),
+      };
+      
+      await saveSheet(id, restoredSheet);
+      res.json({ success: true, sheet: restoredSheet, restored: true });
       return;
     }
 
