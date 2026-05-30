@@ -1533,7 +1533,8 @@ export default function App() {
         </div>
       )}
 
-             <div className="bg-slate-900 border border-slate-800/80 rounded-2xl p-5 md:p-6 shadow-xl relative overflow-hidden flex flex-col md:flex-row items-center justify-between gap-5">
+      <header className="max-w-7xl mx-auto px-4 mt-6">
+        <div className="bg-slate-900 border border-slate-800/80 rounded-2xl p-5 md:p-6 shadow-xl relative overflow-hidden flex flex-col md:flex-row items-center justify-between gap-5">
           {/* Backdrop style character background image */}
           {activeForm?.tokenStyle === 'backdrop' && (
             <div className="absolute inset-0 z-0 pointer-events-none">
