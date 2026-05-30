@@ -16,8 +16,52 @@ const dbPath = isVercel
   ? path.join("/tmp", "sheets.json")
   : path.join(process.cwd(), "sheets.json");
 
-// Helper to load sheets
-function loadSheets(): ServerSheetStore {
+// ---------------------------------------------------------------------------
+// Storage helpers — uses Vercel KV (persistent Redis) when available,
+// falls back to local JSON file for development.
+// ---------------------------------------------------------------------------
+
+async function getRedis() {
+  // Vercel Upstash integration auto-injects these env vars (KV_REST_API_URL or UPSTASH_REDIS_REST_URL)
+  const url = process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL;
+  const token = process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN;
+  if (isVercel && url && token) {
+    try {
+      const { Redis } = await import("@upstash/redis");
+      return new Redis({ url, token });
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
+
+// Load a single sheet by id
+async function loadSheet(id: string): Promise<any | null> {
+  const redis = await getRedis();
+  if (redis) {
+    return redis.get(`sheet:${id}`);
+  }
+  // File fallback
+  const sheets = loadSheetsFromFile();
+  return sheets[id] || null;
+}
+
+// Save a single sheet
+async function saveSheet(id: string, sheet: any): Promise<void> {
+  const redis = await getRedis();
+  if (redis) {
+    await redis.set(`sheet:${id}`, JSON.stringify(sheet));
+    return;
+  }
+  // File fallback
+  const sheets = loadSheetsFromFile();
+  sheets[id] = sheet;
+  saveSheetsToFile(sheets);
+}
+
+// File-based helpers (local dev only)
+function loadSheetsFromFile(): ServerSheetStore {
   try {
     if (fs.existsSync(dbPath)) {
       const data = fs.readFileSync(dbPath, "utf-8");
@@ -29,8 +73,7 @@ function loadSheets(): ServerSheetStore {
   return {};
 }
 
-// Helper to save sheets
-function saveSheets(sheets: ServerSheetStore) {
+function saveSheetsToFile(sheets: ServerSheetStore) {
   try {
     fs.writeFileSync(dbPath, JSON.stringify(sheets, null, 2), "utf-8");
   } catch (err) {
@@ -38,79 +81,79 @@ function saveSheets(sheets: ServerSheetStore) {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Express app & API routes
+// ---------------------------------------------------------------------------
+
 export const app = express();
 app.use(express.json({ limit: "10mb" }));
 
-// API Routes (registered at module load time so they work on Vercel serverless too)
-
 // Create a sheet
-app.post("/api/sheets", (req, res) => {
+app.post("/api/sheets", async (req, res) => {
   try {
-    const sheets = loadSheets();
     const id = "sheet_" + Math.random().toString(36).substring(2, 11);
     const editToken = "edit_" + Math.random().toString(36).substring(2, 15);
-    
+
     const newSheet = {
       ...req.body,
       id,
       editToken,
       lastUpdated: Date.now(),
     };
-    
-    sheets[id] = newSheet;
-    saveSheets(sheets);
-    
+
+    await saveSheet(id, newSheet);
+
     res.status(201).json({ id, editToken, sheet: newSheet });
   } catch (error) {
+    console.error("Erro ao criar ficha:", error);
     res.status(500).json({ error: "Erro interno ao criar ficha." });
   }
 });
 
 // Get a sheet
-app.get("/api/sheets/:id", (req, res) => {
+app.get("/api/sheets/:id", async (req, res) => {
   try {
-    const sheets = loadSheets();
     const { id } = req.params;
     const { token } = req.query;
-    
-    const sheet = sheets[id];
+
+    const sheet = await loadSheet(id);
     if (!sheet) {
-       res.status(404).json({ error: "Ficha não encontrada." });
-       return;
+      res.status(404).json({ error: "Ficha não encontrada." });
+      return;
     }
-    
+
     const isEditable = token === sheet.editToken;
-    
+
     // Strip editToken for privacy when returning sheet to read-only viewers
     const responseSheet = { ...sheet };
     if (!isEditable) {
       delete responseSheet.editToken;
     }
-    
+
     res.json({ sheet: responseSheet, isEditable });
   } catch (error) {
+    console.error("Erro ao carregar ficha:", error);
     res.status(500).json({ error: "Erro ao carregar a ficha." });
   }
 });
 
 // Update a sheet
-app.put("/api/sheets/:id", (req, res) => {
+app.put("/api/sheets/:id", async (req, res) => {
   try {
-    const sheets = loadSheets();
     const { id } = req.params;
     const { editToken } = req.body;
-    
-    const sheet = sheets[id];
+
+    const sheet = await loadSheet(id);
     if (!sheet) {
-       res.status(404).json({ error: "Ficha não encontrada." });
-       return;
+      res.status(404).json({ error: "Ficha não encontrada." });
+      return;
     }
-    
+
     if (!editToken || sheet.editToken !== editToken) {
-       res.status(403).json({ error: "Acesso negado. Token de edição inválido." });
-       return;
+      res.status(403).json({ error: "Acesso negado. Token de edição inválido." });
+      return;
     }
-    
+
     // Update sheet data
     const updatedSheet = {
       ...req.body,
@@ -118,31 +161,30 @@ app.put("/api/sheets/:id", (req, res) => {
       editToken: sheet.editToken, // ensure editToken never changes
       lastUpdated: Date.now(),
     };
-    
-    sheets[id] = updatedSheet;
-    saveSheets(sheets);
-    
+
+    await saveSheet(id, updatedSheet);
+
     res.json({ success: true, sheet: updatedSheet });
   } catch (error) {
+    console.error("Erro ao salvar ficha:", error);
     res.status(500).json({ error: "Erro ao salvar alterações da ficha." });
   }
 });
 
 // Duplicate a sheet
-app.post("/api/sheets/:id/duplicate", (req, res) => {
+app.post("/api/sheets/:id/duplicate", async (req, res) => {
   try {
-    const sheets = loadSheets();
     const { id } = req.params;
-    
-    const source = sheets[id];
+
+    const source = await loadSheet(id);
     if (!source) {
-       res.status(404).json({ error: "Ficha de origem não encontrada." });
-       return;
+      res.status(404).json({ error: "Ficha de origem não encontrada." });
+      return;
     }
-    
+
     const newId = "sheet_" + Math.random().toString(36).substring(2, 11);
     const newEditToken = "edit_" + Math.random().toString(36).substring(2, 15);
-    
+
     const duplicatedSheet = {
       ...source,
       id: newId,
@@ -150,17 +192,29 @@ app.post("/api/sheets/:id/duplicate", (req, res) => {
       nomePersonagem: `${source.nomePersonagem} (Cópia)`,
       lastUpdated: Date.now(),
     };
-    
-    sheets[newId] = duplicatedSheet;
-    saveSheets(sheets);
-    
+
+    await saveSheet(newId, duplicatedSheet);
+
     res.status(201).json({ id: newId, editToken: newEditToken, sheet: duplicatedSheet });
   } catch (error) {
+    console.error("Erro ao duplicar ficha:", error);
     res.status(500).json({ error: "Erro ao duplicar a ficha." });
   }
 });
 
+// Debug endpoint — helps diagnose Vercel routing issues
+app.get("/api/health", (_req, res) => {
+  res.json({
+    ok: true,
+    isVercel,
+    hasRedis: !!(process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL),
+    timestamp: Date.now(),
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Local development server (Vite + listen) — skipped on Vercel
+// ---------------------------------------------------------------------------
 async function startServer() {
   if (isVercel) {
     return;
@@ -189,4 +243,3 @@ async function startServer() {
 }
 
 startServer();
-
