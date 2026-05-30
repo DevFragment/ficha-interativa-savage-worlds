@@ -6,7 +6,6 @@
 import express from "express";
 import path from "path";
 import fs from "fs";
-import { createServer as createViteServer } from "vite";
 
 interface ServerSheetStore {
   [id: string]: any;
@@ -169,6 +168,7 @@ async function startServer() {
 
   // Vite Integration for Assets and Client Rendering
   if (process.env.NODE_ENV !== "production") {
+    const { createServer: createViteServer } = await import("vite");
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: "spa",
