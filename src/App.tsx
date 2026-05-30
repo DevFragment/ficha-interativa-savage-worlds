@@ -8,15 +8,18 @@ import {
   Sword, Shield, Heart, Sparkles, Copy, Plus, Trash, 
   Share2, Check, Skull, Feather, History, Package, Lock, Unlock, RefreshCw,
   AlertCircle, Upload, LayoutGrid, Layers, Trash2, Camera,
-  Printer, Download
+  Printer, Download, FileText
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { PDFDocument, PDFTextField, PDFCheckBox } from 'pdf-lib';
 import { 
   CharacterSheet, 
   CharacterFormState, 
   INITIAL_SKILLS, 
   AttributeKey, 
-  SkillSetting
+  SkillSetting,
+  Weapon,
+  Power
 } from './types';
 
 // Sealed generator function
@@ -97,6 +100,231 @@ const createDefaultSheet = (nome: string, conceito: string): CharacterSheet => {
     fadiga: 0,
     xp: 0,
     xpTrack: 'Novato',
+    lastUpdated: Date.now()
+  };
+};
+
+const parseSavageWorldsPDFFields = (fieldData: Record<string, string>): CharacterSheet => {
+  const getValue = (key: string) => fieldData[key] || '';
+
+  // Basic Fields
+  const nomePersonagem = getValue('Nome') || 'Meu Personagem';
+  const jogador = getValue('Jogador') || 'Jogador';
+  const campanha = getValue('Campanha') || 'Minha Campanha';
+  const raca = getValue('Raça') || 'Humano';
+  const conceito = getValue('Conceito') || 'Guerreiro';
+  const aparencia = getValue('Aparência') || '';
+  const historia = getValue('História do Personagem') || '';
+  const equipamentoGeral = getValue('Equipamento') || '';
+  
+  const pesoCarregado = getValue('Peso Carregado') ? `${getValue('Peso Carregado')} kg` : '0 kg';
+  const pesoLimite = getValue('Peso Limite') ? `${getValue('Peso Limite')} kg` : '20 kg';
+  
+  const benes = parseInt(getValue('Bênes')) || 3;
+  const ferimentos = 0;
+  const fadiga = 0;
+  const xp = 0;
+  const xpTrack = 'Novato';
+
+  // Attributes
+  const getDieFromCheckBoxes = (startIndex: number): 'd4' | 'd6' | 'd8' | 'd10' | 'd12' => {
+    let checkedCount = 0;
+    for (let i = 0; i < 5; i++) {
+      const idx = startIndex + i;
+      const key = idx === 0 ? 'Check Box' : `Check Box${idx}`;
+      if (fieldData[key] === '/Sim') {
+        checkedCount++;
+      }
+    }
+    if (checkedCount >= 5) return 'd12';
+    if (checkedCount === 4) return 'd10';
+    if (checkedCount === 3) return 'd8';
+    if (checkedCount === 2) return 'd6';
+    return 'd4';
+  };
+
+  const getAttributeMod = (key: string): number => {
+    return parseInt(fieldData[key]) || 0;
+  };
+
+  const atributos = {
+    Agilidade: { dado: getDieFromCheckBoxes(0), mod: getAttributeMod('Mod.AGI') },
+    Astúcia: { dado: getDieFromCheckBoxes(4), mod: getAttributeMod('Mod.AST') },
+    Espírito: { dado: getDieFromCheckBoxes(9), mod: getAttributeMod('Mod.ESP') },
+    Força: { dado: getDieFromCheckBoxes(14), mod: getAttributeMod('Mod.FOR') },
+    Vigor: { dado: getDieFromCheckBoxes(19), mod: getAttributeMod('Mod.VIG') }
+  };
+
+  // Skills (Perícias)
+  const periciasList: SkillSetting[] = [];
+  const skillGroupsList = [
+    { prefix: 'Perícia(AGI)', attr: 'Agilidade' as const, count: 11 },
+    { prefix: 'Perícia(AST)', attr: 'Astúcia' as const, count: 11 },
+    { prefix: 'Perícia(ESP)', attr: 'Espírito' as const, count: 6 },
+    { prefix: 'Perícia(FOR)', attr: 'Força' as const, count: 2 },
+    { prefix: 'Perícia(VIG)', attr: 'Vigor' as const, count: 2 }
+  ];
+
+  let currentBoxIndex = 24;
+  let modIndex = 0;
+
+  skillGroupsList.forEach(group => {
+    for (let i = 0; i < group.count; i++) {
+      const fieldKey = i === 0 ? group.prefix : `${group.prefix}${i - 1}`;
+      const name = getValue(fieldKey);
+      
+      const startBox = currentBoxIndex;
+      currentBoxIndex += 5;
+
+      const modFieldKey = modIndex === 0 ? 'Mod.PER' : `Mod.PER${modIndex - 1}`;
+      modIndex++;
+      
+      if (name && name.trim() !== '') {
+        let checkedCount = 0;
+        for (let b = 0; b < 5; b++) {
+          const idx = startBox + b;
+          const key = `Check Box${idx}`;
+          if (fieldData[key] === '/Sim') {
+            checkedCount++;
+          }
+        }
+        
+        let dado: 'd4' | 'd6' | 'd8' | 'd10' | 'd12' = 'd4';
+        if (checkedCount >= 5) dado = 'd12';
+        else if (checkedCount === 4) dado = 'd10';
+        else if (checkedCount === 3) dado = 'd8';
+        else if (checkedCount === 2) dado = 'd6';
+        else if (checkedCount === 1) dado = 'd4';
+        
+        const mod = parseInt(fieldData[modFieldKey]) || 0;
+        
+        periciasList.push({
+          nome: name.trim(),
+          atributoAssociado: group.attr,
+          possui: checkedCount > 0,
+          dado,
+          mod
+        });
+      }
+    }
+  });
+
+  // Default skills from types if they are missing
+  INITIAL_SKILLS.forEach(initialSkill => {
+    const exists = periciasList.some(p => p.nome.toLowerCase() === initialSkill.nome.toLowerCase());
+    if (!exists) {
+      periciasList.push({
+        ...initialSkill,
+        possui: false,
+        dado: 'd4',
+        mod: 0
+      });
+    }
+  });
+
+  // Weapons (Armas)
+  const armas: Weapon[] = [];
+  for (let w = 0; w < 5; w++) {
+    const suffix = w === 0 ? '' : `${w - 1}`;
+    const nameKey = `Arma${suffix}`;
+    const danoKey = `Dano${suffix}`;
+    const alcanceKey = `Alcance${suffix}`;
+    const obsKey = `Observação${suffix}`;
+    const cdtKey = `CdT${suffix}`;
+    const paKey = `PA${suffix}`;
+    const pesoKey = `Peso${suffix}`;
+
+    const nome = getValue(nameKey);
+    if (nome && nome.trim() !== '') {
+      armas.push({
+        id: `arm_pdf_${w}_${Math.random().toString(36).substring(2, 6)}`,
+        nome: nome.trim(),
+        dano: getValue(danoKey) || 'Força',
+        alcance: getValue(alcanceKey) || 'Melee',
+        cdt: getValue(cdtKey) || '1',
+        pa: getValue(paKey) || '0',
+        peso: getValue(pesoKey) || '0',
+        observacoes: getValue(obsKey) || ''
+      });
+    }
+  }
+
+  // Powers (Poderes)
+  const poderes: Power[] = [];
+  for (let p = 0; p < 9; p++) {
+    const suffix = p === 0 ? '' : `${p - 1}`;
+    const nameKey = `Poder${suffix}`;
+    const custoKey = `Custo${suffix}`;
+    const distKey = `Distância${suffix}`;
+    const durKey = `Duração${suffix}`;
+    const efeitoKey = `Dano/Efeito${suffix}`;
+
+    const nome = getValue(nameKey);
+    if (nome && nome.trim() !== '') {
+      poderes.push({
+        id: `pow_pdf_${p}_${Math.random().toString(36).substring(2, 6)}`,
+        nome: nome.trim(),
+        estagio: 'Novato',
+        custo: getValue(custoKey) || '',
+        distancia: getValue(distKey) || '',
+        duracao: getValue(durKey) || '',
+        efeito: getValue(efeitoKey) || ''
+      });
+    }
+  }
+
+  // Derived modifiers (Aparar & Resistência)
+  let apararMod = 0;
+  let resistenciaMod = 0;
+
+  const writtenParry = parseInt(getValue('ApararTotal')) || parseInt(getValue('ApararNatural')) || 0;
+  if (writtenParry > 0) {
+    const lutar = periciasList.find(p => p.nome.toLowerCase() === 'lutar');
+    const lutarDieVal = lutar && lutar.possui ? (parseInt(lutar.dado.replace('d', '')) || 4) : 0;
+    const baseParry = lutarDieVal > 0 ? (2 + Math.floor(lutarDieVal / 2) + (lutar?.mod || 0)) : 2;
+    apararMod = writtenParry - baseParry;
+  }
+
+  const writtenToughness = parseInt(getValue('ResistênciaTotal')) || parseInt(getValue('ResistênciaNatural')) || 0;
+  if (writtenToughness > 0) {
+    const vigorDieVal = parseInt(atributos.Vigor.dado.replace('d', '')) || 6;
+    const baseToughness = 2 + Math.floor(vigorDieVal / 2) + atributos.Vigor.mod;
+    resistenciaMod = writtenToughness - baseToughness;
+  }
+
+  return {
+    id: '',
+    nomePersonagem,
+    jogador,
+    campanha,
+    raca,
+    conceito,
+    aparencia,
+    historia,
+    equipamentoGeral,
+    pesoCarregado,
+    pesoLimite,
+    benes,
+    ferimentos,
+    fadiga,
+    xp,
+    xpTrack,
+    formas: [
+      {
+        formId: 'base',
+        nomeForma: 'Ficha Base',
+        imageUrl: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=350&h=350&fit=crop&q=80',
+        atributos,
+        pericias: periciasList,
+        vantagens: getValue('Vantagens/Poderes') || '',
+        complicacoes: getValue('Complicações') || '',
+        poderes,
+        armas,
+        apararMod,
+        resistenciaMod
+      }
+    ],
+    formaAtivaId: 'base',
     lastUpdated: Date.now()
   };
 };
@@ -667,6 +895,194 @@ export default function App() {
     e.target.value = '';
   };
 
+  const handleImportPDF = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setToast("Lendo arquivo PDF...");
+    setLoading(true);
+    setError(null);
+
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      try {
+        const arrayBuffer = event.target?.result as ArrayBuffer;
+
+        // 1. Try to load and parse AcroForm fields locally
+        setToast("Analisando campos do PDF...");
+        const pdfDoc = await PDFDocument.load(arrayBuffer);
+        const form = pdfDoc.getForm();
+        const fields = form.getFields();
+
+        let fieldData: Record<string, string> = {};
+        let hasInteractiveFields = false;
+
+        fields.forEach(field => {
+          const name = field.getName();
+          let value = '';
+          
+          if (field instanceof PDFTextField) {
+            value = field.getText() || '';
+          } else if (field instanceof PDFCheckBox) {
+            value = field.isChecked() ? '/Sim' : '/Off';
+          }
+          
+          if (value !== '') {
+            hasInteractiveFields = true;
+          }
+          fieldData[name] = value;
+        });
+
+        let parsedData: any = null;
+
+        // If it is fillable PDF, parse it locally
+        if (hasInteractiveFields && (fieldData['Nome'] || Object.keys(fieldData).some(k => k.startsWith('Check Box')))) {
+          setToast("Mapeando ficha preenchível localmente...");
+          parsedData = parseSavageWorldsPDFFields(fieldData);
+        } else {
+          // Fallback to Gemini AI if it is a flat PDF
+          setToast("PDF plano detectado. Interpretando texto com IA...");
+          
+          // Convert arrayBuffer to base64 string
+          const bytes = new Uint8Array(arrayBuffer);
+          let binary = '';
+          const chunk = 8192;
+          for (let i = 0; i < bytes.byteLength; i += chunk) {
+            binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk) as any);
+          }
+          const base64String = window.btoa(binary);
+
+          const res = await fetch('/api/sheets/parse-pdf', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ pdfBase64: base64String })
+          });
+
+          if (!res.ok) {
+            const errData = await res.json().catch(() => ({}));
+            throw new Error(errData.error || 'Este PDF não é preenchível e a IA não conseguiu processá-lo.');
+          }
+
+          parsedData = await res.json();
+        }
+
+        // Apply parsedData to sheet (Merge vs New Sheet)
+        if (sheet && isEditable) {
+          const choice = window.confirm(
+            `Ficha do PDF interpretada com sucesso!\n\n` +
+            `Personagem: ${parsedData.nomePersonagem || 'Sem nome'}\n` +
+            `Conceito: ${parsedData.conceito || 'Sem conceito'}\n\n` +
+            `Deseja MESCLAR/SUBSTITUIR as informações na ficha atual?\n` +
+            `(Clique em CANCELAR para abrir em uma NOVA ficha separada)`
+          );
+
+          if (choice) {
+            updateSheet(prev => {
+              const updatedFormas = prev.formas.map(f => {
+                if (f.formId === localActiveFormId) {
+                  // Merge parsed data into active form
+                  const incomingForm = parsedData.formas ? parsedData.formas[0] : parsedData;
+                  return {
+                    ...f,
+                    atributos: incomingForm.atributos || f.atributos,
+                    pericias: incomingForm.pericias || f.pericias,
+                    vantagens: incomingForm.vantagens || f.vantagens,
+                    complicacoes: incomingForm.complicacoes || f.complicacoes,
+                    poderes: incomingForm.poderes || f.poderes,
+                    armas: incomingForm.armas || f.armas,
+                    apararMod: incomingForm.apararMod ?? f.apararMod,
+                    resistenciaMod: incomingForm.resistenciaMod ?? f.resistenciaMod
+                  };
+                }
+                return f;
+              });
+
+              return {
+                ...prev,
+                nomePersonagem: parsedData.nomePersonagem || prev.nomePersonagem,
+                jogador: parsedData.jogador || prev.jogador,
+                campanha: parsedData.campanha || prev.campanha,
+                raca: parsedData.raca || prev.raca,
+                conceito: parsedData.conceito || prev.conceito,
+                aparencia: parsedData.aparencia || prev.aparencia,
+                historia: parsedData.historia || prev.historia,
+                equipamentoGeral: parsedData.equipamentoGeral || prev.equipamentoGeral,
+                pesoCarregado: parsedData.pesoCarregado || prev.pesoCarregado,
+                pesoLimite: parsedData.pesoLimite || prev.pesoLimite,
+                benes: parsedData.benes ?? prev.benes,
+                ferimentos: parsedData.ferimentos ?? prev.ferimentos,
+                fadiga: parsedData.fadiga ?? prev.fadiga,
+                xp: parsedData.xp ?? prev.xp,
+                xpTrack: parsedData.xpTrack || prev.xpTrack,
+                formas: updatedFormas,
+                lastUpdated: Date.now()
+              };
+            });
+            setToast("Ficha atualizada com os dados do PDF!");
+            setLoading(false);
+            return;
+          }
+        }
+
+        // Create new sheet
+        setToast("Criando nova ficha com os dados do PDF...");
+        const newSheetData = createDefaultSheet(parsedData.nomePersonagem, parsedData.conceito);
+        newSheetData.jogador = parsedData.jogador || newSheetData.jogador;
+        newSheetData.campanha = parsedData.campanha || newSheetData.campanha;
+        newSheetData.raca = parsedData.raca || newSheetData.raca;
+        newSheetData.aparencia = parsedData.aparencia || newSheetData.aparencia;
+        newSheetData.historia = parsedData.historia || newSheetData.historia;
+        newSheetData.equipamentoGeral = parsedData.equipamentoGeral || newSheetData.equipamentoGeral;
+        newSheetData.pesoCarregado = parsedData.pesoCarregado || newSheetData.pesoCarregado;
+        newSheetData.pesoLimite = parsedData.pesoLimite || newSheetData.pesoLimite;
+        newSheetData.benes = parsedData.benes ?? newSheetData.benes;
+        newSheetData.ferimentos = parsedData.ferimentos ?? newSheetData.ferimentos;
+        newSheetData.fadiga = parsedData.fadiga ?? newSheetData.fadiga;
+        newSheetData.xp = parsedData.xp ?? newSheetData.xp;
+        newSheetData.xpTrack = parsedData.xpTrack || newSheetData.xpTrack;
+
+        const incomingForm = parsedData.formas ? parsedData.formas[0] : parsedData;
+        if (newSheetData.formas[0]) {
+          newSheetData.formas[0].atributos = incomingForm.atributos || newSheetData.formas[0].atributos;
+          newSheetData.formas[0].pericias = incomingForm.pericias || newSheetData.formas[0].pericias;
+          newSheetData.formas[0].vantagens = incomingForm.vantagens || newSheetData.formas[0].vantagens;
+          newSheetData.formas[0].complicacoes = incomingForm.complicacoes || newSheetData.formas[0].complicacoes;
+          newSheetData.formas[0].poderes = incomingForm.poderes || newSheetData.formas[0].poderes;
+          newSheetData.formas[0].armas = incomingForm.armas || newSheetData.formas[0].armas;
+          newSheetData.formas[0].apararMod = incomingForm.apararMod ?? newSheetData.formas[0].apararMod;
+          newSheetData.formas[0].resistenciaMod = incomingForm.resistenciaMod ?? newSheetData.formas[0].resistenciaMod;
+        }
+
+        const createRes = await fetch('/api/sheets', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(newSheetData)
+        });
+
+        if (!createRes.ok) throw new Error('Erro ao salvar nova ficha criada do PDF.');
+        const result = await createRes.json();
+
+        // Update URL
+        const newUrl = `${window.location.origin}${window.location.pathname}?id=${result.id}&token=${result.editToken}`;
+        window.history.replaceState({}, '', newUrl);
+
+        setSheet(result.sheet);
+        setIsEditable(true);
+        setLocalActiveFormId('base');
+        setToast("Nova ficha importada via PDF com sucesso!");
+      } catch (err: any) {
+        console.error(err);
+        setError("Erro ao interpretar PDF: " + (err.message || "Estrutura do arquivo não suportada."));
+      } finally {
+        setLoading(false);
+      }
+    };
+    reader.readAsArrayBuffer(file);
+
+    // Clear input
+    e.target.value = '';
+  };
+
   const handleDuplicate = async () => {
     if (!sheet) return;
     try {
@@ -691,6 +1107,20 @@ export default function App() {
   if (!sheet) {
     return (
       <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col items-center justify-center p-4">
+        {loading && (
+          <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-slate-950/80 backdrop-blur-md">
+            <div className="flex flex-col items-center space-y-4 p-6 bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl max-w-sm w-full mx-4">
+              <RefreshCw className="w-12 h-12 text-amber-500 animate-spin" />
+              <h3 className="text-lg font-serif font-bold text-amber-100 text-center">Processando Arquivo</h3>
+              <p className="text-xs text-slate-400 text-center leading-relaxed">
+                {toast || "Carregando informações..."}
+              </p>
+              <p className="text-[10px] text-slate-500 text-center font-mono">
+                Isso pode levar alguns segundos usando a IA do Gemini
+              </p>
+            </div>
+          </div>
+        )}
         <motion.div 
           initial={{ opacity: 0, y: 15 }}
           animate={{ opacity: 1, y: 0 }}
@@ -746,20 +1176,27 @@ export default function App() {
                 ))}
               </div>
 
-              <div className="pt-4 mt-2 border-t border-slate-800/80">
+              <div className="pt-4 mt-2 border-t border-slate-800/80 flex flex-col gap-2">
                 <button 
                   onClick={() => setIsCreatingNew(true)}
                   disabled={loading}
-                  className="w-full font-bold bg-slate-800 hover:bg-slate-700 text-slate-300 py-3 rounded-lg text-sm tracking-wide transition-all shadow-sm flex items-center justify-center gap-2 cursor-pointer mb-3"
+                  className="w-full font-bold bg-slate-800 hover:bg-slate-750 text-slate-300 py-3 rounded-lg text-sm tracking-wide transition-all shadow-sm flex items-center justify-center gap-2 cursor-pointer"
                 >
                   <Plus className="w-4 h-4" />
                   Criar Nova Ficha
                 </button>
-                <label className="w-full font-bold bg-slate-900 border border-slate-800 hover:border-slate-700 text-slate-400 hover:text-slate-200 py-3 rounded-lg text-sm tracking-wide transition-all flex items-center justify-center gap-2 cursor-pointer">
-                  <Upload className="w-4 h-4" />
-                  Importar de JSON
-                  <input type="file" accept=".json" onChange={handleImportJSON} className="hidden" />
-                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  <label className="w-full font-bold bg-slate-900 border border-slate-800 hover:border-slate-700 text-slate-400 hover:text-slate-200 py-3 rounded-lg text-xs tracking-wide transition-all flex items-center justify-center gap-1.5 cursor-pointer">
+                    <Upload className="w-4 h-4" />
+                    JSON
+                    <input type="file" accept=".json" onChange={handleImportJSON} className="hidden" />
+                  </label>
+                  <label className="w-full font-bold bg-slate-900 border border-slate-800 hover:border-slate-700 text-slate-400 hover:text-slate-200 py-3 rounded-lg text-xs tracking-wide transition-all flex items-center justify-center gap-1.5 cursor-pointer">
+                    <FileText className="w-4 h-4 text-amber-500" />
+                    PDF (IA)
+                    <input type="file" accept=".pdf" onChange={handleImportPDF} className="hidden" />
+                  </label>
+                </div>
               </div>
             </div>
           ) : (
@@ -804,11 +1241,16 @@ export default function App() {
                 Gerar Ficha Interativa
               </button>
 
-              <div className="pt-4 mt-2 border-t border-slate-800/80">
-                <label className="w-full font-bold bg-slate-900 border border-slate-800 hover:border-slate-700 text-slate-400 hover:text-slate-200 py-3 rounded-lg text-sm tracking-wide transition-all flex items-center justify-center gap-2 cursor-pointer">
+              <div className="pt-4 mt-2 border-t border-slate-800/80 grid grid-cols-2 gap-2">
+                <label className="w-full font-bold bg-slate-900 border border-slate-800 hover:border-slate-700 text-slate-400 hover:text-slate-200 py-3 rounded-lg text-xs tracking-wide transition-all flex items-center justify-center gap-1.5 cursor-pointer">
                   <Upload className="w-4 h-4" />
-                  Importar de JSON
+                  Importar JSON
                   <input type="file" accept=".json" onChange={handleImportJSON} className="hidden" />
+                </label>
+                <label className="w-full font-bold bg-slate-900 border border-slate-800 hover:border-slate-700 text-slate-400 hover:text-slate-200 py-3 rounded-lg text-xs tracking-wide transition-all flex items-center justify-center gap-1.5 cursor-pointer">
+                  <FileText className="w-4 h-4 text-amber-500" />
+                  Importar PDF (IA)
+                  <input type="file" accept=".pdf" onChange={handleImportPDF} className="hidden" />
                 </label>
               </div>
             </div>
@@ -820,6 +1262,20 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 pb-12 font-sans selection:bg-amber-500 selection:text-slate-950">
+      {loading && (
+        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-slate-950/80 backdrop-blur-md">
+          <div className="flex flex-col items-center space-y-4 p-6 bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl max-w-sm w-full mx-4">
+            <RefreshCw className="w-12 h-12 text-amber-500 animate-spin" />
+            <h3 className="text-lg font-serif font-bold text-amber-100 text-center">Processando Arquivo</h3>
+            <p className="text-xs text-slate-400 text-center leading-relaxed">
+              {toast || "Carregando informações..."}
+            </p>
+            <p className="text-[10px] text-slate-500 text-center font-mono">
+              Isso pode levar alguns segundos usando a IA do Gemini
+            </p>
+          </div>
+        </div>
+      )}
       
       {/* Sinc & Share Control Panel */}
       <div className="bg-slate-900/90 border-b border-slate-850 px-4 py-2 text-xs sticky top-0 z-40 backdrop-blur-md">
@@ -867,9 +1323,15 @@ export default function App() {
             </button>
 
             {isEditable && (
-              <button onClick={handleEditorLink} className="bg-slate-800 hover:bg-slate-750 font-semibold px-2.5 py-1 rounded text-emerald-300 transition text-[11px] cursor-pointer print:hidden" title="Guarde este link privado">
-                <Lock className="w-3 h-3 inline mr-1" /> Salvar Link Editor
-              </button>
+              <>
+                <label className="bg-slate-800 hover:bg-slate-750 font-semibold px-2.5 py-1 rounded text-amber-200 transition text-[11px] cursor-pointer print:hidden flex items-center gap-1" title="Importar dados de um PDF de Ficha">
+                  <FileText className="w-3 h-3 inline" /> Importar PDF (IA)
+                  <input type="file" accept=".pdf" onChange={handleImportPDF} className="hidden" />
+                </label>
+                <button onClick={handleEditorLink} className="bg-slate-800 hover:bg-slate-750 font-semibold px-2.5 py-1 rounded text-emerald-300 transition text-[11px] cursor-pointer print:hidden" title="Guarde este link privado">
+                  <Lock className="w-3 h-3 inline mr-1" /> Salvar Link Editor
+                </button>
+              </>
             )}
 
             <button onClick={handleDuplicate} className="bg-slate-800 hover:bg-slate-750 font-semibold px-2.5 py-1 rounded text-slate-300 transition text-[11px] cursor-pointer">
