@@ -12,7 +12,10 @@ interface ServerSheetStore {
   [id: string]: any;
 }
 
-const dbPath = path.join(process.cwd(), "sheets.json");
+const isVercel = process.env.VERCEL === "1" || !!process.env.NOW_BUILDER;
+const dbPath = isVercel
+  ? path.join("/tmp", "sheets.json")
+  : path.join(process.cwd(), "sheets.json");
 
 // Helper to load sheets
 function loadSheets(): ServerSheetStore {
@@ -36,11 +39,14 @@ function saveSheets(sheets: ServerSheetStore) {
   }
 }
 
-async function startServer() {
-  const app = express();
-  const PORT = process.env.PORT ? parseInt(process.env.PORT) : 3001;
+export const app = express();
+app.use(express.json({ limit: "10mb" }));
 
-  app.use(express.json({ limit: "10mb" }));
+async function startServer() {
+  if (isVercel) {
+    return;
+  }
+  const PORT = process.env.PORT ? parseInt(process.env.PORT) : 3001;
 
   // API Routes
   
