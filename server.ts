@@ -61,6 +61,19 @@ async function saveSheet(id: string, sheet: any): Promise<void> {
   saveSheetsToFile(sheets);
 }
 
+// Delete a single sheet
+async function deleteSheet(id: string): Promise<void> {
+  const redis = await getRedis();
+  if (redis) {
+    await redis.del(`sheet:${id}`);
+    return;
+  }
+  // File fallback
+  const sheets = loadSheetsFromFile();
+  delete sheets[id];
+  saveSheetsToFile(sheets);
+}
+
 // File-based helpers (local dev only)
 function loadSheetsFromFile(): ServerSheetStore {
   try {
@@ -200,6 +213,31 @@ app.post("/api/sheets/:id/duplicate", async (req, res) => {
   } catch (error) {
     console.error("Erro ao duplicar ficha:", error);
     res.status(500).json({ error: "Erro ao duplicar a ficha." });
+  }
+});
+
+// Delete a sheet
+app.delete("/api/sheets/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { editToken } = req.body;
+
+    const sheet = await loadSheet(id);
+    if (!sheet) {
+      res.status(404).json({ error: "Ficha não encontrada." });
+      return;
+    }
+
+    if (!editToken || sheet.editToken !== editToken) {
+      res.status(403).json({ error: "Acesso negado. Token de edição inválido." });
+      return;
+    }
+
+    await deleteSheet(id);
+    res.json({ success: true });
+  } catch (error) {
+    console.error("Erro ao excluir ficha:", error);
+    res.status(500).json({ error: "Erro ao excluir a ficha." });
   }
 });
 

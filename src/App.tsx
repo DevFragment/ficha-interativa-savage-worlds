@@ -799,7 +799,7 @@ export default function App() {
 
   // Calculations
   const getParry = (form: CharacterFormState): number => {
-    const lutar = form.pericias.find(p => p.nome === 'Lutar');
+    const lutar = form.pericias.find(p => p.nome.toLowerCase() === 'lutar');
     if (!lutar || !lutar.possui) return 2 + form.apararMod;
     const dieValue = parseInt(lutar.dado.replace('d', '')) || 4;
     return 2 + Math.floor(dieValue / 2) + lutar.mod + form.apararMod;
@@ -860,6 +860,46 @@ export default function App() {
       try {
         const text = event.target?.result as string;
         const importedSheet = JSON.parse(text);
+
+        // Check if we are currently viewing a sheet and it is editable
+        if (sheet && isEditable) {
+          const choice = window.confirm(
+            `Ficha JSON carregada com sucesso!\n\n` +
+            `Personagem: ${importedSheet.nomePersonagem || 'Sem nome'}\n` +
+            `Conceito: ${importedSheet.conceito || 'Sem conceito'}\n\n` +
+            `Deseja MESCLAR/SUBSTITUIR as informações na ficha atual?\n` +
+            `(Clique em CANCELAR para abrir em uma NOVA ficha separada)`
+          );
+
+          if (choice) {
+            updateSheet(prev => {
+              // Merge/Replace all properties except id and editToken
+              return {
+                ...prev,
+                nomePersonagem: importedSheet.nomePersonagem || prev.nomePersonagem,
+                jogador: importedSheet.jogador || prev.jogador,
+                campanha: importedSheet.campanha || prev.campanha,
+                raca: importedSheet.raca || prev.raca,
+                conceito: importedSheet.conceito || prev.conceito,
+                aparencia: importedSheet.aparencia || prev.aparencia,
+                historia: importedSheet.historia || prev.historia,
+                equipamentoGeral: importedSheet.equipamentoGeral || prev.equipamentoGeral,
+                pesoCarregado: importedSheet.pesoCarregado || prev.pesoCarregado,
+                pesoLimite: importedSheet.pesoLimite || prev.pesoLimite,
+                benes: importedSheet.benes ?? prev.benes,
+                ferimentos: importedSheet.ferimentos ?? prev.ferimentos,
+                fadiga: importedSheet.fadiga ?? prev.fadiga,
+                xp: importedSheet.xp ?? prev.xp,
+                xpTrack: importedSheet.xpTrack || prev.xpTrack,
+                formas: importedSheet.formas || prev.formas,
+                formaAtivaId: importedSheet.formaAtivaId || prev.formaAtivaId,
+                lastUpdated: Date.now()
+              };
+            });
+            setToast("Ficha mesclada via JSON com sucesso!");
+            return;
+          }
+        }
         
         // Sanitize to avoid over-riding properties unnecessarily, but keeping it simple for now
         delete importedSheet.id; 
@@ -1104,6 +1144,47 @@ export default function App() {
     }
   };
 
+  const handleDelete = async () => {
+    if (!sheet) return;
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get('token');
+    if (!token) return;
+
+    if (window.confirm(`Tem certeza absoluta de que deseja EXCLUIR permanentemente a ficha de "${sheet.nomePersonagem || 'Personagem'}"? Esta ação não pode ser desfeita.`)) {
+      try {
+        setLoading(true);
+        const res = await fetch(`/api/sheets/${sheet.id}`, {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ editToken: token })
+        });
+        if (res.ok) {
+          // Remove from local storage list
+          setSavedSheets(prev => {
+            const updated = prev.filter(s => s.id !== sheet.id);
+            localStorage.setItem('savage_saved_sheets', JSON.stringify(updated));
+            return updated;
+          });
+          
+          setToast('Ficha excluída com sucesso!');
+          setSheet(null);
+          setIsEditable(true);
+          
+          // Clear URL query parameters
+          const cleanUrl = `${window.location.origin}${window.location.pathname}`;
+          window.history.replaceState({}, '', cleanUrl);
+        } else {
+          const data = await res.json().catch(() => ({}));
+          setToast(`Erro ao excluir: ${data.error || 'Erro desconhecido'}`);
+        }
+      } catch (err) {
+        setToast('Erro de conexão ao tentar excluir.');
+      } finally {
+        setLoading(false);
+      }
+    }
+  };
+
   if (!sheet) {
     return (
       <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col items-center justify-center p-4">
@@ -1325,11 +1406,18 @@ export default function App() {
             {isEditable && (
               <>
                 <label className="bg-slate-800 hover:bg-slate-750 font-semibold px-2.5 py-1 rounded text-amber-200 transition text-[11px] cursor-pointer print:hidden flex items-center gap-1" title="Importar dados de um PDF de Ficha">
-                  <FileText className="w-3 h-3 inline" /> Importar PDF (IA)
+                  <FileText className="w-3 h-3 inline" /> Importar PDF
                   <input type="file" accept=".pdf" onChange={handleImportPDF} className="hidden" />
+                </label>
+                <label className="bg-slate-800 hover:bg-slate-750 font-semibold px-2.5 py-1 rounded text-slate-350 transition text-[11px] cursor-pointer print:hidden flex items-center gap-1" title="Importar dados de um arquivo JSON">
+                  <Upload className="w-3 h-3 inline" /> Importar JSON
+                  <input type="file" accept=".json" onChange={handleImportJSON} className="hidden" />
                 </label>
                 <button onClick={handleEditorLink} className="bg-slate-800 hover:bg-slate-750 font-semibold px-2.5 py-1 rounded text-emerald-300 transition text-[11px] cursor-pointer print:hidden" title="Guarde este link privado">
                   <Lock className="w-3 h-3 inline mr-1" /> Salvar Link Editor
+                </button>
+                <button onClick={handleDelete} className="bg-red-950/40 hover:bg-red-900/60 border border-red-900/35 font-semibold px-2.5 py-1 rounded text-red-300 transition text-[11px] cursor-pointer print:hidden flex items-center gap-1" title="Excluir esta ficha permanentemente">
+                  <Trash2 className="w-3 h-3 inline" /> Excluir Ficha
                 </button>
               </>
             )}
